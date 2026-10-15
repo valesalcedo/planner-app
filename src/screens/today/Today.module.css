@@ -1,0 +1,162 @@
+.dayNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -4px;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timelineRow {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.time {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-3);
+  padding-top: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.block {
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.blockTitle {
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.classBlock {
+  background: var(--lavender);
+  color: var(--lavender-ink);
+}
+
+.classBlock .blockTitle {
+  color: var(--ink);
+}
+
+.activityBlock {
+  background: var(--mint);
+  color: var(--mint-ink);
+}
+
+.eventBlock {
+  background: var(--yellow);
+  color: var(--yellow-deep);
+}
+
+.eventBlock .blockTitle,
+.activityBlock .blockTitle {
+  color: var(--ink);
+}
+
+.skipped {
+  opacity: 0.55;
+  background: transparent;
+  border: 2px dashed var(--lavender);
+}
+
+.skipped .blockTitle {
+  text-decoration: line-through;
+}
+
+.work {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: var(--shadow-soft);
+}
+
+.urgent {
+  box-shadow: 0 0 0 2px var(--pink);
+}
+
+.running {
+  background: var(--pink-tint);
+}
+
+.gapTag {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--pink-deep);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.workMain {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  min-height: 44px;
+  justify-content: center;
+}
+
+.workTitle {
+  font-weight: 800;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.taskList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.doneCard {
+  opacity: 0.7;
+}
+
+.subList,
+.doneList {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0 0 0 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.fab {
+  position: fixed;
+  right: max(20px, calc(50% - 260px));
+  bottom: calc(var(--nav-h) + 20px + var(--safe-bottom));
+  z-index: 25;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--pill);
+  border: none;
+  background: var(--pink);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow-float);
+}

@@ -1,0 +1,43 @@
+.custom {
+  width: 92px;
+}
+
+.custom .input {
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+
+.subs {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subs legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.subRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px 44px;
+  gap: 6px;
+  align-items: center;
+}
+
+.link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  color: var(--pink-deep);
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: underline;
+  margin-top: -8px;
+  min-height: 32px;
+}

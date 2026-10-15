@@ -1,0 +1,64 @@
+.balance {
+  background: var(--yellow);
+  border-radius: 22px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.balanceValue {
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.rules {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.rules span {
+  background: var(--yellow-soft);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--yellow-deep);
+}
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.reward {
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: var(--shadow-soft);
+}
+
+.accent {
+  width: 36px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.rewardName {
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1.25;
+  min-height: 36px;
+  overflow-wrap: anywhere;
+}

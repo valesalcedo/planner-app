@@ -1,0 +1,105 @@
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tile {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-soft);
+}
+
+.tileValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.chart rect:focus {
+  outline: none;
+}
+
+.axis {
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--ink-2);
+  font-family: var(--font-body);
+}
+
+.readout {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-2);
+  min-height: 18px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.table thead th {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-3);
+  text-align: left;
+  padding-bottom: 4px;
+}
+
+.table th,
+.table td {
+  padding: 5px 0;
+  text-align: left;
+  font-weight: 600;
+}
+
+.table td,
+.table thead th:last-child {
+  text-align: right;
+}
+
+.courseRow th,
+.courseRow td {
+  font-weight: 800;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.table tbody:first-of-type .courseRow th,
+.table tbody:first-of-type .courseRow td {
+  border-top: none;
+  padding-top: 6px;
+}
+
+.sub {
+  padding-left: 22px !important;
+  color: var(--ink-2);
+}
+
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  margin-right: 8px;
+  vertical-align: -1px;
+}

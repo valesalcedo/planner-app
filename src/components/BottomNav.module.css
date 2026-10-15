@@ -1,0 +1,46 @@
+.nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  padding: 6px 6px calc(6px + var(--safe-bottom));
+}
+
+.item {
+  border: none;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 52px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.item[aria-current='page'] {
+  color: var(--pink-deep);
+  font-weight: 800;
+}
+
+.iconWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.dot {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--pink);
+  border: 2px solid var(--surface);
+}

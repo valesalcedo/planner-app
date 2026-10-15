@@ -1,0 +1,49 @@
+:root {
+  color-scheme: light;
+
+  /* Superficies */
+  --bg: #fff8f3;
+  --surface: #ffffff;
+  --line: #f3dfe6;
+
+  /* Texto */
+  --ink: #3b2a35;
+  --ink-2: #6b5562;
+  --ink-3: #8a5a70;
+
+  /* Rosado */
+  --pink: #f48fb1;
+  --pink-soft: #f9c6d5;
+  --pink-tint: #fde7ee;
+  --pink-deep: #a8325a;
+  --pink-chart: #d9608a;
+
+  /* Amarillo */
+  --yellow: #fde68a;
+  --yellow-soft: #fff6cf;
+  --yellow-star: #f5b700;
+  --yellow-deep: #5c4a00;
+  --yellow-edge: #8a6200;
+
+  /* Acentos */
+  --lavender: #dcd6f7;
+  --lavender-ink: #4f4466;
+  --mint: #c9ebd8;
+  --mint-ink: #24563d;
+  --danger: #b3261e;
+
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --pill: 999px;
+
+  --font-display: 'Baloo 2', ui-rounded, system-ui, sans-serif;
+  --font-body: 'Nunito', ui-rounded, system-ui, sans-serif;
+
+  --shadow-soft: 0 1px 0 var(--line);
+  --shadow-float: 0 6px 18px rgba(168, 50, 90, 0.22);
+
+  --nav-h: 64px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
