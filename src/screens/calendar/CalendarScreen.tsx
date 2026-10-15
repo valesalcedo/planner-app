@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { useLookups } from '../../hooks/useDerived';
+import { inkOn } from '../../lib/color';
 import { MONTHS, WEEKDAYS_SHORT, addDays, formatLongDate, parseISODate, startOfWeek, toISODate, today } from '../../lib/time';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
@@ -24,7 +25,7 @@ export function CalendarScreen() {
   const tasks = useStore((s) => s.tasks);
   const openPage = useUI((s) => s.openPage);
   const openTaskForm = useUI((s) => s.openTaskForm);
-  const { course } = useLookups();
+  const { course, category } = useLookups();
 
   const first = parseISODate(`${month}-01`);
   const gridStart = startOfWeek(`${month}-01`);
@@ -115,18 +116,27 @@ export function CalendarScreen() {
           {formatLongDate(selected)}
         </h2>
         {dayEvents.length + dayDeadlines.length + dayTasks.length === 0 && <p className="small muted" style={{ margin: 0 }}>Nada anotado este día.</p>}
-        {dayEvents.map((e) => (
-          <button key={e.id} type="button" className={`${styles.item} ${styles[e.kind]}`} onClick={() => setEditing(e)}>
-            <span className="stack" style={{ gap: 0, textAlign: 'left' }}>
-              <span style={{ fontWeight: 800, fontSize: 14 }}>{e.title}</span>
-              <span className="small">
-                {EVENT_LABEL[e.kind]}
-                {course(e.courseId) && ` · ${course(e.courseId)!.name}`}
+        {dayEvents.map((e) => {
+          const cat = e.kind === 'evento' ? category(e.categoryId) : undefined;
+          return (
+            <button
+              key={e.id}
+              type="button"
+              className={`${styles.item} ${styles[e.kind]}`}
+              style={cat ? { background: cat.color, color: inkOn(cat.color) } : undefined}
+              onClick={() => setEditing(e)}
+            >
+              <span className="stack" style={{ gap: 0, textAlign: 'left' }}>
+                <span style={{ fontWeight: 800, fontSize: 14 }}>{e.title}</span>
+                <span className="small">
+                  {cat ? cat.name : EVENT_LABEL[e.kind]}
+                  {course(e.courseId) && ` · ${course(e.courseId)!.name}`}
+                </span>
               </span>
-            </span>
-            <span style={{ fontWeight: 800, fontSize: 13 }}>{e.start ? `${e.start}${e.end ? `–${e.end}` : ''}` : 'Todo el día'}</span>
-          </button>
-        ))}
+              <span style={{ fontWeight: 800, fontSize: 13 }}>{e.start ? `${e.start}${e.end ? `–${e.end}` : ''}` : 'Todo el día'}</span>
+            </button>
+          );
+        })}
         {dayDeadlines.map((t) => (
           <button key={t.id} type="button" className={`${styles.item} ${styles.entrega}`} onClick={() => openTaskForm({ taskId: t.id })}>
             <span className="stack" style={{ gap: 0, textAlign: 'left' }}>

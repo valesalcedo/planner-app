@@ -1,0 +1,86 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import { balanceOf, classRef, earnedBetween } from '../lib/rewards';
+import { today } from '../lib/time';
+import { useStore } from './useStore';
+
+const st = () => useStore.getState();
+
+function addTestTask(title = 'Tarea de prueba') {
+  st().addTask({
+    title,
+    date: today(),
+    mustToday: false,
+    difficulty: 'media',
+    estimateMin: 30,
+    activityId: 'estudio',
+    subtasks: [],
+  });
+  return st().tasks.at(-1)!.id;
+}
+
+describe('estrellas de tareas', () => {
+  beforeEach(() => st().resetData());
+
+  it('marcar, desmarcar, volver a marcar y borrar deja todo en cero', () => {
+    const id = addTestTask();
+    st().setTaskDone(id, true);
+    st().setTaskDone(id, false);
+    st().setTaskDone(id, true);
+    expect(balanceOf(st().stars)).toBe(10);
+    expect(st().stars).toHaveLength(1);
+    st().deleteTask(id);
+    expect(balanceOf(st().stars)).toBe(0);
+    expect(earnedBetween(st().stars, 0, Date.now() + 1)).toBe(0);
+  });
+
+  it('desmarcar quita exactamente lo que se dio aunque cambie la racha', () => {
+    const id = addTestTask();
+    st().setTaskDone(id, true); // completa el día: la racha sube
+    st().updateSettings({ streakDays: 1, streakMultiplier: 2 });
+    st().setTaskDone(id, false);
+    expect(balanceOf(st().stars)).toBe(0);
+  });
+
+  it('borrar una tarea no toca las estrellas de otras', () => {
+    const a = addTestTask('A');
+    const b = addTestTask('B');
+    st().setTaskDone(a, true);
+    st().setTaskDone(b, true);
+    st().deleteTask(a);
+    expect(st().stars.map((s) => s.ref)).toEqual([b]);
+  });
+});
+
+describe('asistencia a clases', () => {
+  beforeEach(() => st().resetData());
+
+  it('fui suma estrellas, cambiar a falté o "no hubo" las quita', () => {
+    st().saveBlock({ title: 'Cálculo', kind: 'clase', weekday: 0, start: '08:20', end: '09:30' });
+    const block = st().weekly[0].id;
+    const d = '2026-10-12';
+    st().setAttendance(d, block, 'fui');
+    expect(balanceOf(st().stars)).toBe(5);
+    expect(st().stars[0].ref).toBe(classRef(d, block));
+    st().setAttendance(d, block, 'fui');
+    expect(balanceOf(st().stars)).toBe(5);
+    st().setAttendance(d, block, 'falte');
+    expect(balanceOf(st().stars)).toBe(0);
+    expect(st().attendance[d][block]).toBe('falte');
+    st().setAttendance(d, block, 'fui');
+    st().toggleSkip(d, block);
+    expect(balanceOf(st().stars)).toBe(0);
+    expect(st().attendance[d][block]).toBeUndefined();
+  });
+});
+
+describe('categorías', () => {
+  beforeEach(() => st().resetData());
+
+  it('al borrar una categoría las actividades quedan sin categoría', () => {
+    const cat = st().saveCategory({ name: 'Coro', color: '#BFB3F0' });
+    st().saveBlock({ title: 'Ensayo', kind: 'actividad', weekday: 2, start: '19:00', end: '21:00', categoryId: cat });
+    st().deleteCategory(cat);
+    expect(st().weekly[0].categoryId).toBeUndefined();
+    expect(st().categories.find((c) => c.id === cat)).toBeUndefined();
+  });
+});

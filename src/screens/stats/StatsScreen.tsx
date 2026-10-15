@@ -13,7 +13,15 @@ export function StatsScreen() {
   const thisWeek = startOfWeek(today());
   const [week, setWeek] = useState(thisWeek);
   const data = useStore(
-    useShallow((s) => ({ entries: s.entries, tasks: s.tasks, weekly: s.weekly, skipped: s.skipped, events: s.events, stars: s.stars })),
+    useShallow((s) => ({
+      entries: s.entries,
+      tasks: s.tasks,
+      weekly: s.weekly,
+      skipped: s.skipped,
+      attendance: s.attendance,
+      events: s.events,
+      stars: s.stars,
+    })),
   );
   const showToast = useUI((s) => s.showToast);
   const { course, activityName } = useLookups();
@@ -36,6 +44,12 @@ export function StatsScreen() {
   };
 
   const ratio = stats.estimateRatio;
+  const att = stats.attendance;
+  const marked = att.fui + att.falte;
+  const attPct = marked > 0 ? Math.round((att.fui / marked) * 100) : null;
+  const attRows = [...att.byCourse.entries()]
+    .filter(([, c]) => c.fui + c.falte > 0)
+    .sort((a, b) => b[1].falte - a[1].falte);
 
   return (
     <div className="screen">
@@ -70,6 +84,42 @@ export function StatsScreen() {
         <Tile value={String(stats.starsEarned)} label="estrellas ganadas" star />
       </div>
 
+      {att.total > 0 && (
+        <section className="card card--lg stack" aria-labelledby="att-title">
+          <div className="row row--between">
+            <h2 id="att-title" className="section-title">
+              Asistencia a clases
+            </h2>
+            {attPct !== null && <span style={{ fontWeight: 800, fontSize: 18 }}>{attPct}%</span>}
+          </div>
+          <p className="small" style={{ margin: 0 }}>
+            {marked === 0
+              ? `Tuviste ${att.total} ${att.total === 1 ? 'clase' : 'clases'} y no has marcado ninguna. Márcalas en Hoy con "Fui" o "Falté".`
+              : `Fuiste a ${att.fui} de ${marked} ${marked === 1 ? 'clase marcada' : 'clases marcadas'}${
+                  att.total > marked ? ` · ${att.total - marked} sin marcar` : ''
+                }.`}
+          </p>
+          {marked > 0 && (
+            <div className="progress" role="progressbar" aria-valuenow={attPct ?? 0} aria-valuemin={0} aria-valuemax={100} aria-label="Asistencia">
+              <span style={{ width: `${attPct}%` }} />
+            </div>
+          )}
+          {attRows.length > 1 &&
+            attRows.map(([id, c]) => (
+              <div key={id} className="row row--between small">
+                <span className="row" style={{ gap: 8, minWidth: 0 }}>
+                  <span className={styles.swatch} style={{ background: course(id)?.color ?? '#e9d9df' }} aria-hidden="true" />
+                  {courseName(id)}
+                </span>
+                <span style={{ fontWeight: 700, flexShrink: 0 }}>
+                  {c.fui}/{c.fui + c.falte}
+                  {c.falte > 0 && <span style={{ color: 'var(--pink-deep)' }}> · faltaste {c.falte}</span>}
+                </span>
+              </div>
+            ))}
+        </section>
+      )}
+
       <section className="card card--lg stack" aria-labelledby="chart-title">
         <h2 id="chart-title" className="section-title">
           Horas de foco por día
@@ -87,7 +137,7 @@ export function StatsScreen() {
           </button>
         </div>
         <p className="small muted" style={{ margin: 0 }}>
-          Horas por ramo y tipo de actividad, sumando clases del horario, evaluaciones y tiempo cronometrado.
+          Horas por ramo y tipo de actividad, sumando clases del horario (menos las que faltaste), evaluaciones y tiempo cronometrado.
         </p>
         {loadRows.length === 0 ? (
           <p className="empty" style={{ margin: 0 }}>Todavía no hay registros esta semana.</p>

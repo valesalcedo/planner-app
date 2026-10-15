@@ -1,4 +1,5 @@
 import { type ChangeEvent, useState } from 'react';
+import { ColorPicker } from '../../components/ColorPicker';
 import { Icon } from '../../components/Icon';
 import { toISODate } from '../../lib/time';
 import { COURSE_COLORS } from '../../store/defaults';
@@ -9,6 +10,9 @@ import styles from './Settings.module.css';
 
 export function SettingsScreen() {
   const courses = useStore((s) => s.courses);
+  const categories = useStore((s) => s.categories);
+  const saveCategory = useStore((s) => s.saveCategory);
+  const deleteCategory = useStore((s) => s.deleteCategory);
   const activityTypes = useStore((s) => s.activityTypes);
   const settings = useStore((s) => s.settings);
   const saveCourse = useStore((s) => s.saveCourse);
@@ -22,6 +26,7 @@ export function SettingsScreen() {
 
   const [newCourse, setNewCourse] = useState('');
   const [newActivity, setNewActivity] = useState('');
+  const [newCategory, setNewCategory] = useState('');
 
   const addCourse = () => {
     if (!newCourse.trim()) return;
@@ -71,24 +76,11 @@ export function SettingsScreen() {
           Ramos
         </h2>
         <p className="small muted" style={{ margin: 0 }}>
-          Se usan para separar tu carga académica por curso.
+          Se usan para separar tu carga académica por curso. Toca el cuadrito para cambiar su color: las clases del ramo se pintan con él.
         </p>
         {courses.map((c) => (
           <div key={c.id} className={styles.courseRow}>
-            <label className={styles.color} style={{ background: c.color }}>
-              <span className="sr-only">Color de {c.name}</span>
-              <select
-                value={c.color}
-                onChange={(e) => saveCourse({ ...c, color: e.target.value })}
-                aria-label={`Color de ${c.name}`}
-              >
-                {COURSE_COLORS.map((col, i) => (
-                  <option key={col} value={col}>
-                    Color {i + 1}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <ColorPicker value={c.color} label={c.name} onChange={(color) => saveCourse({ ...c, color })} />
             <input
               className="input"
               aria-label="Nombre del ramo"
@@ -114,6 +106,48 @@ export function SettingsScreen() {
         >
           <input className="input" placeholder="Nuevo ramo" aria-label="Nuevo ramo" value={newCourse} onChange={(e) => setNewCourse(e.target.value)} />
           <button type="submit" className="btn btn--pink" disabled={!newCourse.trim()}>
+            Agregar
+          </button>
+        </form>
+      </section>
+
+      <section className="card card--lg stack" aria-labelledby="cats-title">
+        <h2 id="cats-title" className="section-title">
+          Categorías de actividades
+        </h2>
+        <p className="small muted" style={{ margin: 0 }}>
+          Para lo que no es clase: coro, salidas, deporte… Cada categoría tiene su color en el horario y en tu día.
+        </p>
+        {categories.map((c) => (
+          <div key={c.id} className={styles.courseRow}>
+            <ColorPicker value={c.color} label={c.name} onChange={(color) => saveCategory({ ...c, color })} />
+            <input
+              className="input"
+              aria-label="Nombre de la categoría"
+              defaultValue={c.name}
+              onBlur={(e) => e.target.value.trim() && saveCategory({ ...c, name: e.target.value.trim() })}
+            />
+            <button
+              type="button"
+              className="icon-btn icon-btn--plain"
+              aria-label={`Borrar ${c.name}`}
+              onClick={() => confirm(`¿Borrar la categoría "${c.name}"? Las actividades quedan sin categoría.`) && deleteCategory(c.id)}
+            >
+              <Icon name="trash" size={18} />
+            </button>
+          </div>
+        ))}
+        <form
+          className={styles.addRow}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!newCategory.trim()) return;
+            saveCategory({ name: newCategory.trim(), color: COURSE_COLORS[(categories.length + 6) % COURSE_COLORS.length] });
+            setNewCategory('');
+          }}
+        >
+          <input className="input" placeholder="Nueva categoría" aria-label="Nueva categoría" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} />
+          <button type="submit" className="btn btn--pink" disabled={!newCategory.trim()}>
             Agregar
           </button>
         </form>
@@ -183,6 +217,7 @@ export function SettingsScreen() {
           <NumberField id="st-mid" label="Bono tarea media" value={settings.bonus.media} onChange={(v) => updateSettings({ bonus: { ...settings.bonus, media: v } })} />
           <NumberField id="st-hard" label="Bono tarea difícil" value={settings.bonus.dificil} onChange={(v) => updateSettings({ bonus: { ...settings.bonus, dificil: v } })} />
           <NumberField id="st-mult" label="Multiplicador racha" step={0.1} value={settings.streakMultiplier} onChange={(v) => updateSettings({ streakMultiplier: v })} />
+          <NumberField id="st-class" label="Por ir a clases" value={settings.starsPerClass} onChange={(v) => updateSettings({ starsPerClass: Math.round(v) })} />
         </div>
       </section>
 

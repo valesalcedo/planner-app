@@ -8,6 +8,14 @@ export type Difficulty = 'facil' | 'media' | 'dificil';
 export interface Course {
   id: string;
   name: string;
+  /** Color en hex (#RRGGBB). Puede ser uno de la paleta o uno elegido a mano. */
+  color: string;
+}
+
+/** Categoría para actividades que no son clases (coro, salidas sociales, etc.). */
+export interface Category {
+  id: string;
+  name: string;
   color: string;
 }
 
@@ -74,7 +82,12 @@ export interface WeeklyBlock {
   courseId?: string;
   /** Tipo de actividad con que cuenta en la carga académica (solo clases). */
   activityId?: string;
+  /** Categoría de la actividad (solo bloques que no son clases). */
+  categoryId?: string;
 }
+
+/** Asistencia a una clase un día puntual. "No hubo clase" se guarda aparte en `skipped`. */
+export type Attendance = 'fui' | 'falte';
 
 export type EventKind = 'evaluacion' | 'entrega' | 'evento';
 
@@ -86,6 +99,8 @@ export interface CalendarEvent {
   end?: HHMM;
   kind: EventKind;
   courseId?: string;
+  /** Categoría (solo eventos que no son de un ramo). */
+  categoryId?: string;
 }
 
 export interface Reward {
@@ -94,11 +109,17 @@ export interface Reward {
   price: number;
 }
 
+export type StarKind = 'foco' | 'tarea' | 'clase' | 'canje' | 'ajuste';
+
 export interface StarTx {
   id: string;
   amount: number;
   reason: string;
   at: number;
+  /** De dónde vienen. Los movimientos antiguos no lo tienen. */
+  kind?: StarKind;
+  /** Id de la tarea, o "fecha:bloque" de la clase, para poder deshacer exactamente lo que se dio. */
+  ref?: string;
 }
 
 export interface Settings {
@@ -111,11 +132,14 @@ export interface Settings {
   /** Días de racha necesarios para activar el multiplicador. */
   streakDays: number;
   streakMultiplier: number;
+  /** Estrellas por marcar que fuiste a una clase. */
+  starsPerClass: number;
 }
 
 export interface AppData {
   version: 1;
   courses: Course[];
+  categories: Category[];
   activityTypes: ActivityType[];
   tasks: Task[];
   entries: TimeEntry[];
@@ -123,6 +147,8 @@ export interface AppData {
   weekly: WeeklyBlock[];
   /** Clases que no ocurren un día puntual: fecha → ids de bloques. */
   skipped: Record<ISODate, string[]>;
+  /** Asistencia marcada: fecha → id de bloque → fui/falté. */
+  attendance: Record<ISODate, Record<string, Attendance>>;
   events: CalendarEvent[];
   rewards: Reward[];
   stars: StarTx[];

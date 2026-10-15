@@ -16,10 +16,12 @@ export function ShopScreen() {
   const stars = useStore((s) => s.stars);
   const settings = useStore((s) => s.settings);
   const redeem = useStore((s) => s.redeem);
+  const deleteStarTx = useStore((s) => s.deleteStarTx);
+  const [showAll, setShowAll] = useState(false);
   const showToast = useUI((s) => s.showToast);
   const [editing, setEditing] = useState<Reward | 'new' | null>(null);
 
-  const history = [...stars].reverse().slice(0, 12);
+  const history = [...stars].reverse().slice(0, showAll ? undefined : 12);
   const sorted = [...rewards].sort((a, b) => a.price - b.price);
 
   return (
@@ -43,6 +45,7 @@ export function ShopScreen() {
           <span>
             +{settings.bonus.facil} a +{settings.bonus.dificil} por tarea
           </span>
+          {settings.starsPerClass > 0 && <span>+{settings.starsPerClass} por ir a clases</span>}
           <span>
             Racha {settings.streakDays}+ días ×{settings.streakMultiplier}
           </span>
@@ -103,14 +106,36 @@ export function ShopScreen() {
           <h2 id="hist-title" className="section-title">
             Movimientos recientes
           </h2>
+          <p className="small muted" style={{ margin: 0 }}>
+            Si algo quedó mal (por ejemplo, una tarea de prueba), puedes quitar el movimiento con la ×.
+          </p>
           {history.map((t) => (
-            <div key={t.id} className="row row--between small">
-              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.reason}</span>
+            <div key={t.id} className="row row--between small" style={{ gap: 4 }}>
+              <span style={{ minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.reason}</span>
               <span style={{ fontWeight: 800, color: t.amount < 0 ? 'var(--pink-deep)' : 'var(--mint-ink)', flexShrink: 0 }}>
                 {t.amount > 0 ? `+${t.amount}` : t.amount}
               </span>
+              <button
+                type="button"
+                className="icon-btn icon-btn--plain"
+                style={{ width: 36, height: 36, margin: '-6px -8px -6px 0', flexShrink: 0 }}
+                aria-label={`Quitar movimiento: ${t.reason}`}
+                onClick={() => {
+                  const sign = t.amount > 0 ? 'bajará' : 'subirá';
+                  if (confirm(`¿Quitar "${t.reason}" (${t.amount > 0 ? '+' : ''}${t.amount})? Tu saldo ${sign} ${Math.abs(t.amount)}.`)) {
+                    deleteStarTx(t.id);
+                  }
+                }}
+              >
+                <Icon name="close" size={16} />
+              </button>
             </div>
           ))}
+          {stars.length > 12 && (
+            <button type="button" className="btn btn--ghost btn--sm" onClick={() => setShowAll(!showAll)}>
+              {showAll ? 'Ver menos' : `Ver todos (${stars.length})`}
+            </button>
+          )}
         </section>
       )}
 

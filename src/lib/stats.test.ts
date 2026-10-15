@@ -33,4 +33,19 @@ describe('weekStats', () => {
     data.skipped = {};
     expect(weekStats(data, '2026-10-12', tsAt('2026-10-12', 0)).classTotal).toBe(0);
   });
+
+  it('las clases que faltaste no suman horas y cuentan en la asistencia', () => {
+    const data = initialData();
+    data.courses = [{ id: 'calc', name: 'Cálculo', color: '#fff' }];
+    data.weekly = [
+      { id: 'l', title: 'Cálculo', kind: 'clase', weekday: 0, start: '08:00', end: '09:00', courseId: 'calc' },
+      { id: 'm', title: 'Cálculo', kind: 'clase', weekday: 2, start: '08:00', end: '09:00', courseId: 'calc' },
+      { id: 'v', title: 'Cálculo', kind: 'clase', weekday: 4, start: '08:00', end: '09:00', courseId: 'calc' },
+    ];
+    data.attendance = { '2026-10-12': { l: 'fui' }, '2026-10-14': { m: 'falte' } };
+    const s = weekStats(data, '2026-10-12', tsAt('2026-10-20', 0));
+    expect(s.classTotal).toBe(120);
+    expect(s.attendance).toMatchObject({ total: 3, fui: 1, falte: 1 });
+    expect(s.attendance.byCourse.get('calc')).toEqual({ total: 3, fui: 1, falte: 1 });
+  });
 });

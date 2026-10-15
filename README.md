@@ -11,7 +11,9 @@ Es una PWA (app web instalable): se publica gratis en GitHub Pages y se agrega a
 - **Foco**: cronómetro por tarea o subtarea. Sigue contando aunque cierres la app, porque guarda la hora de inicio.
 - **Calendario** con evaluaciones, entregas y eventos, más tu horario semanal de clases.
 - **Semana**: horas de foco por día, tareas hechas y una tabla de **carga académica** por ramo y tipo de actividad, con botón para copiarla. Úsala con "Semana pasada" cuando llenes la encuesta.
-- **Tienda de permisos**: 1 estrella por minuto de foco, bono por tarea terminada según dificultad y multiplicador por racha. Los premios y precios los defines tú.
+- **Asistencia**: en Hoy marcas cada clase como "Fui", "Falté" o "No hubo". Ir a clases suma estrellas y en Semana ves tu porcentaje de asistencia por ramo.
+- **Colores**: cada ramo y cada categoría de actividad (coro, salidas, etc.) tiene su color, de la paleta o elegido a mano, y así se pintan en el horario y en tu día.
+- **Tienda de permisos**: 1 estrella por minuto de foco, bono por tarea terminada según dificultad, estrellas por ir a clases y multiplicador por racha. Los premios y precios los defines tú.
 - **Ajustes**: ramos, tipos de actividad, horario del día, reglas de estrellas y respaldo (descargar e importar).
 
 ## Subirla a GitHub y publicarla

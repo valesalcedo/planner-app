@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Task } from '../types';
 import { DEFAULT_SETTINGS } from '../store/defaults';
-import { computeStreak, multiplierFor, starsForFocus } from './rewards';
+import { computeStreak, earnedBetween, multiplierFor, starsForFocus } from './rewards';
 
 const t = (date: string, done: boolean): Task => ({
   id: `${date}-${done}-${Math.random()}`,
@@ -39,5 +39,18 @@ describe('estrellas', () => {
     expect(starsForFocus(29.9, DEFAULT_SETTINGS, 1)).toBe(29);
     expect(starsForFocus(50, DEFAULT_SETTINGS, multiplierFor(3, DEFAULT_SETTINGS))).toBe(60);
     expect(multiplierFor(2, DEFAULT_SETTINGS)).toBe(1);
+  });
+});
+
+describe('earnedBetween', () => {
+  it('no cuenta canjes y descuenta los movimientos negativos antiguos', () => {
+    const stars = [
+      { id: '1', amount: 10, reason: 'Terminaste "X"', at: 5 },
+      { id: '2', amount: -12, reason: 'Desmarcaste "X"', at: 6 },
+      { id: '3', amount: 10, reason: 'Terminaste "X"', at: 7 },
+      { id: '4', amount: -90, reason: 'Canjeaste "Algo rico"', at: 8 },
+      { id: '5', amount: 30, reason: 'Foco', at: 9, kind: 'foco' as const },
+    ];
+    expect(earnedBetween(stars, 0, 100)).toBe(38);
   });
 });

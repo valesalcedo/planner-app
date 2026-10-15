@@ -1,10 +1,12 @@
 import { Icon } from '../../components/Icon';
 import { useLookups } from '../../hooks/useDerived';
+import { useNow } from '../../hooks/useNow';
+import { inkOn } from '../../lib/color';
 import type { DayPlan, Placement } from '../../lib/scheduler';
-import { addDays, formatDuration, hhmmToMin, minToHHMM, weekdayOf } from '../../lib/time';
+import { addDays, formatDuration, hhmmToMin, minToHHMM, tsAt, weekdayOf } from '../../lib/time';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
-import type { ISODate, Task } from '../../types';
+import type { Attendance, ISODate, Task } from '../../types';
 import styles from './Today.module.css';
 
 interface Props {
@@ -27,13 +29,26 @@ export function DayTimeline({ date, plan, doneTasks }: Props) {
   const skipped = useStore((s) => s.skipped[date]);
   const activeTimer = useStore((s) => s.activeTimer);
   const toggleSkip = useStore((s) => s.toggleSkip);
+  const attendance = useStore((s) => s.attendance[date]);
+  const setAttendance = useStore((s) => s.setAttendance);
+  const starsPerClass = useStore((s) => s.settings.starsPerClass);
+  const now = useNow(60_000);
   const startTimer = useStore((s) => s.startTimer);
   const setTaskDone = useStore((s) => s.setTaskDone);
   const setSubtaskDone = useStore((s) => s.setSubtaskDone);
   const moveTask = useStore((s) => s.moveTask);
   const setTab = useUI((s) => s.setTab);
   const showToast = useUI((s) => s.showToast);
-  const { course } = useLookups();
+  const { course, blockColor, eventColor } = useLookups();
+
+  const colorOf = (kind: string, sourceId: string): string | undefined => {
+    if (kind === 'evento') {
+      const ev = events.find((e) => e.id === sourceId);
+      return ev ? eventColor(ev) : undefined;
+    }
+    const b = weekly.find((x) => x.id === sourceId);
+    return b ? blockColor(b) : undefined;
+  };
 
   const taskById = new Map(tasks.map((t) => [t.id, t]));
   const allDay = events.filter((e) => e.date === date && !e.start);
@@ -97,9 +112,24 @@ export function DayTimeline({ date, plan, doneTasks }: Props) {
                 <BusyCard
                   title={row.title}
                   kind={row.kind}
+                  color={colorOf(row.kind, row.sourceId)}
                   range={`${minToHHMM(row.start)}–${minToHHMM(row.end)}`}
                   skipped={row.skipped}
                   onToggle={row.kind === 'evento' ? undefined : () => toggleSkip(date, row.sourceId)}
+                  attendance={
+                    row.kind === 'clase' && tsAt(date, row.start) <= now
+                      ? {
+                          value: attendance?.[row.sourceId] ?? null,
+                          stars: starsPerClass,
+                          onChange: (v) => {
+                            const prev = attendance?.[row.sourceId] ?? null;
+                            const next = prev === v ? null : v;
+                            setAttendance(date, row.sourceId, next);
+                            if (next === 'fui' && starsPerClass > 0) showToast(`¡Bien! +${starsPerClass} estrellas por ir a clases`);
+                          },
+                        }
+                      : undefined
+                  }
                 />
               ) : (
                 <WorkCard
@@ -180,21 +210,57 @@ export function DayTimeline({ date, plan, doneTasks }: Props) {
   );
 }
 
-function BusyCard(props: { title: string; kind: string; range: string; skipped: boolean; onToggle?: () => void }) {
-  const cls = props.kind === 'evento' ? styles.eventBlock : props.kind === 'actividad' ? styles.activityBlock : styles.classBlock;
+interface BusyCardProps {
+  title: string;
+  kind: string;
+  color?: string;
+  range: string;
+  skipped: boolean;
+  onToggle?: () => void;
+  /** Solo clases que ya empezaron: marcar si fuiste. */
+  attendance?: { value: Attendance | null; stars: number; onChange: (v: Attendance) => void };
+}
+
+const DEFAULT_BG: Record<string, string> = { clase: '#DCD6F7', actividad: '#C9EBD8', evento: '#FDE68A' };
+
+function BusyCard({ title, kind, color, range, skipped, onToggle, attendance }: BusyCardProps) {
+  const bg = color ?? DEFAULT_BG[kind] ?? DEFAULT_BG.clase;
+  const ink = inkOn(bg);
+  const label = kind === 'clase' ? 'Clase' : kind === 'actividad' ? 'Actividad' : 'Evento';
+  const status = skipped ? ' · no hubo' : attendance?.value === 'fui' ? ' · fuiste' : attendance?.value === 'falte' ? ' · faltaste' : '';
+  const style = skipped ? { borderColor: bg } : { background: bg, color: ink };
+
   return (
-    <div className={`${styles.block} ${cls} ${props.skipped ? styles.skipped : ''}`}>
-      <div className="stack" style={{ gap: 0, minWidth: 0 }}>
-        <span className={styles.blockTitle}>{props.title}</span>
-        <span className="small">
-          {props.kind === 'clase' ? 'Clase' : props.kind === 'actividad' ? 'Actividad' : 'Evento'} · {props.range}
-          {props.skipped && ' · no hubo'}
-        </span>
+    <div className={`${styles.block} ${skipped ? styles.skipped : ''}`} style={style}>
+      <div className={styles.blockHead}>
+        <div className="stack" style={{ gap: 0, minWidth: 0 }}>
+          <span className={styles.blockTitle}>{title}</span>
+          <span className="small">
+            {label} · {range}
+            {status}
+          </span>
+        </div>
+        {onToggle && (!attendance || skipped) && (
+          <button type="button" className={`btn btn--sm ${styles.blockBtn}`} onClick={onToggle}>
+            {skipped ? 'Restaurar' : 'No hay'}
+          </button>
+        )}
       </div>
-      {props.onToggle && (
-        <button type="button" className="btn btn--sm" style={{ background: 'rgba(255,255,255,.7)' }} onClick={props.onToggle}>
-          {props.skipped ? 'Restaurar' : 'No hay'}
-        </button>
+      {attendance && !skipped && (
+        <div className={styles.attend} role="group" aria-label={`Asistencia a ${title}`}>
+          <button type="button" className={styles.attendBtn} aria-pressed={attendance.value === 'fui'} onClick={() => attendance.onChange('fui')}>
+            <Icon name="check" size={16} strokeWidth={3} /> Fui
+            {attendance.stars > 0 && attendance.value !== 'fui' && <span className={styles.attendStars}>+{attendance.stars}</span>}
+          </button>
+          <button type="button" className={styles.attendBtn} aria-pressed={attendance.value === 'falte'} onClick={() => attendance.onChange('falte')}>
+            Falté
+          </button>
+          {onToggle && (
+            <button type="button" className={styles.attendBtn} onClick={onToggle}>
+              No hubo
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

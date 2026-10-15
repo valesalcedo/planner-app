@@ -1,0 +1,66 @@
+.swatchBtn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 2px rgba(59, 42, 53, 0.1);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.option {
+  aspect-ratio: 1;
+  min-height: 44px;
+  border: none;
+  border-radius: var(--pill);
+  box-shadow: inset 0 0 0 2px rgba(59, 42, 53, 0.08);
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.option[aria-pressed='true'] {
+  box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--ink);
+}
+
+.custom {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  min-height: 56px;
+  cursor: pointer;
+}
+
+.customPreview {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--pill);
+  box-shadow: inset 0 0 0 2px rgba(59, 42, 53, 0.1);
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+.native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}

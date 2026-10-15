@@ -75,7 +75,7 @@ export function TaskForm() {
               type="button"
               className="btn btn--danger"
               onClick={() => {
-                if (confirm(`¿Borrar "${existing.title}"? El tiempo registrado se mantiene en tus estadísticas.`)) {
+                if (confirm(`¿Borrar "${existing.title}"? Se quita el bono de estrellas por terminarla; el tiempo cronometrado se mantiene en tus estadísticas.`)) {
                   deleteTask(existing.id);
                   close();
                 }

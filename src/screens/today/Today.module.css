@@ -33,6 +33,13 @@
   border-radius: var(--radius);
   padding: 10px 12px;
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 2px solid transparent;
+}
+
+.blockHead {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -43,38 +50,53 @@
   font-size: 15px;
 }
 
-.classBlock {
-  background: var(--lavender);
-  color: var(--lavender-ink);
-}
-
-.classBlock .blockTitle {
+.blockBtn {
+  background: rgba(255, 255, 255, 0.7);
   color: var(--ink);
-}
-
-.activityBlock {
-  background: var(--mint);
-  color: var(--mint-ink);
-}
-
-.eventBlock {
-  background: var(--yellow);
-  color: var(--yellow-deep);
-}
-
-.eventBlock .blockTitle,
-.activityBlock .blockTitle {
-  color: var(--ink);
+  flex-shrink: 0;
 }
 
 .skipped {
   opacity: 0.55;
   background: transparent;
-  border: 2px dashed var(--lavender);
+  border-style: dashed;
+  color: var(--ink);
 }
 
 .skipped .blockTitle {
   text-decoration: line-through;
+}
+
+.attend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.attendBtn {
+  min-height: 40px;
+  border: none;
+  border-radius: var(--pill);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.attendBtn[aria-pressed='true'] {
+  background: var(--ink);
+  color: #fff;
+}
+
+.attendStars {
+  font-size: 12px;
+  color: var(--yellow-edge);
 }
 
 .work {

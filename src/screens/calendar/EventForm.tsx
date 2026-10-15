@@ -17,6 +17,7 @@ interface Props {
 
 export function EventForm({ event, date, onClose }: Props) {
   const courses = useStore((s) => s.courses);
+  const categories = useStore((s) => s.categories);
   const saveEvent = useStore((s) => s.saveEvent);
   const deleteEvent = useStore((s) => s.deleteEvent);
 
@@ -26,6 +27,7 @@ export function EventForm({ event, date, onClose }: Props) {
   const [start, setStart] = useState(event?.start ?? '');
   const [end, setEnd] = useState(event?.end ?? '');
   const [courseId, setCourseId] = useState(event?.courseId ?? '');
+  const [categoryId, setCategoryId] = useState(event?.categoryId ?? '');
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -38,6 +40,7 @@ export function EventForm({ event, date, onClose }: Props) {
       start: start || undefined,
       end: start && end ? end : undefined,
       courseId: courseId || undefined,
+      categoryId: kind === 'evento' && categoryId ? categoryId : undefined,
     });
     onClose();
   };
@@ -98,6 +101,19 @@ export function EventForm({ event, date, onClose }: Props) {
         <p className="small muted" style={{ margin: '-8px 0 0' }}>
           Si le pones hora, ese tiempo queda ocupado al ordenar tu día. Las evaluaciones con hora suman a tu carga académica.
         </p>
+        {kind === 'evento' && categories.length > 0 && (
+          <div className="field">
+            <label htmlFor="ev-cat">Categoría</label>
+            <select id="ev-cat" className="input" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <option value="">Sin categoría</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="field">
           <label htmlFor="ev-course">Ramo</label>
           <select id="ev-course" className="input" value={courseId} onChange={(e) => setCourseId(e.target.value)}>

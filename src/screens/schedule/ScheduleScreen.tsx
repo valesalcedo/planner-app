@@ -2,7 +2,9 @@ import { type FormEvent, useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { Sheet } from '../../components/Sheet';
 import { useLookups } from '../../hooks/useDerived';
+import { inkOn } from '../../lib/color';
 import { WEEKDAYS, hhmmToMin } from '../../lib/time';
+import { COURSE_COLORS } from '../../store/defaults';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
 import type { BlockKind, WeeklyBlock } from '../../types';
@@ -10,7 +12,7 @@ import type { BlockKind, WeeklyBlock } from '../../types';
 export function ScheduleScreen() {
   const weekly = useStore((s) => s.weekly);
   const openPage = useUI((s) => s.openPage);
-  const { course } = useLookups();
+  const { course, category, blockColor } = useLookups();
   const [editing, setEditing] = useState<WeeklyBlock | 'new' | null>(null);
 
   return (
@@ -36,25 +38,29 @@ export function ScheduleScreen() {
             {blocks.length === 0 ? (
               <p className="small muted" style={{ margin: 0 }}>Libre</p>
             ) : (
-              blocks.map((b) => (
-                <button
-                  key={b.id}
-                  type="button"
-                  className="card row row--between"
-                  style={{ border: 'none', background: b.kind === 'clase' ? 'var(--lavender)' : 'var(--mint)', minHeight: 52, textAlign: 'left' }}
-                  onClick={() => setEditing(b)}
-                >
-                  <span className="stack" style={{ gap: 0 }}>
-                    <span style={{ fontWeight: 800 }}>{b.title}</span>
-                    <span className="small">
-                      {b.start}–{b.end}
-                      {b.location && ` · ${b.location}`}
-                      {course(b.courseId) && b.title !== course(b.courseId)!.name && ` · ${course(b.courseId)!.name}`}
+              blocks.map((b) => {
+                const bg = blockColor(b) ?? (b.kind === 'clase' ? '#DCD6F7' : '#C9EBD8');
+                const group = b.kind === 'clase' ? course(b.courseId)?.name : category(b.categoryId)?.name;
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    className="card row row--between"
+                    style={{ border: 'none', background: bg, color: inkOn(bg), minHeight: 52, textAlign: 'left' }}
+                    onClick={() => setEditing(b)}
+                  >
+                    <span className="stack" style={{ gap: 0 }}>
+                      <span style={{ fontWeight: 800 }}>{b.title}</span>
+                      <span className="small">
+                        {b.start}–{b.end}
+                        {b.location && ` · ${b.location}`}
+                        {group && b.title !== group && ` · ${group}`}
+                      </span>
                     </span>
-                  </span>
-                  <Icon name="edit" size={18} />
-                </button>
-              ))
+                    <Icon name="edit" size={18} />
+                  </button>
+                );
+              })
             )}
           </section>
         );
@@ -71,6 +77,8 @@ export function ScheduleScreen() {
 
 function BlockForm({ block, onClose }: { block?: WeeklyBlock; onClose: () => void }) {
   const courses = useStore((s) => s.courses);
+  const categories = useStore((s) => s.categories);
+  const saveCategory = useStore((s) => s.saveCategory);
   const activityTypes = useStore((s) => s.activityTypes);
   const saveBlock = useStore((s) => s.saveBlock);
   const deleteBlock = useStore((s) => s.deleteBlock);
@@ -83,8 +91,19 @@ function BlockForm({ block, onClose }: { block?: WeeklyBlock; onClose: () => voi
   const [end, setEnd] = useState(block?.end ?? '09:30');
   const [location, setLocation] = useState(block?.location ?? '');
   const [activityId, setActivityId] = useState(block?.activityId ?? 'catedra');
+  const [categoryId, setCategoryId] = useState(block?.categoryId ?? '');
 
-  const finalTitle = title.trim() || courses.find((c) => c.id === courseId)?.name || '';
+  const pickCategory = (value: string) => {
+    if (value !== '__nueva__') return setCategoryId(value);
+    const name = prompt('Nombre de la nueva categoría')?.trim();
+    if (!name) return;
+    setCategoryId(saveCategory({ name, color: COURSE_COLORS[(categories.length + 6) % COURSE_COLORS.length] }));
+  };
+
+  const finalTitle =
+    title.trim() ||
+    (kind === 'clase' ? courses.find((c) => c.id === courseId)?.name : categories.find((c) => c.id === categoryId)?.name) ||
+    '';
   const valid = finalTitle && days.length > 0 && hhmmToMin(end) > hhmmToMin(start);
 
   const submit = (e: FormEvent) => {
@@ -96,8 +115,9 @@ function BlockForm({ block, onClose }: { block?: WeeklyBlock; onClose: () => voi
       start,
       end,
       location: location.trim() || undefined,
-      courseId: courseId || undefined,
+      courseId: kind === 'clase' ? courseId || undefined : undefined,
       activityId: kind === 'clase' ? activityId : undefined,
+      categoryId: kind === 'actividad' ? categoryId || undefined : undefined,
     };
     if (block) {
       saveBlock({ ...base, id: block.id, weekday: days[0] });
@@ -168,14 +188,28 @@ function BlockForm({ block, onClose }: { block?: WeeklyBlock; onClose: () => voi
             </div>
           </div>
         )}
+        {kind === 'actividad' && (
+          <div className="field">
+            <label htmlFor="bl-cat">Categoría</label>
+            <select id="bl-cat" className="input" value={categoryId} onChange={(e) => pickCategory(e.target.value)}>
+              <option value="">Sin categoría</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+              <option value="__nueva__">+ Nueva categoría…</option>
+            </select>
+          </div>
+        )}
         <div className="field">
-          <label htmlFor="bl-title">Nombre{kind === 'clase' && courseId ? ' (opcional)' : ''}</label>
+          <label htmlFor="bl-title">Nombre{(kind === 'clase' && courseId) || (kind === 'actividad' && categoryId) ? ' (opcional)' : ''}</label>
           <input
             id="bl-title"
             className="input"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder={kind === 'clase' ? 'Ej: Cálculo II o Ayudantía' : 'Ej: Reunión Pastoral'}
+            placeholder={kind === 'clase' ? 'Ej: Cálculo II o Ayudantía' : 'Ej: Ensayo coro'}
           />
         </div>
         <fieldset style={{ border: 'none', margin: 0, padding: 0 }} className="stack">

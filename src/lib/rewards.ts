@@ -45,3 +45,24 @@ export function bonusFor(difficulty: Difficulty, settings: Settings, multiplier:
 export function balanceOf(stars: StarTx[]): number {
   return stars.reduce((sum, t) => sum + t.amount, 0);
 }
+
+/** Es un canje en la tienda (los movimientos antiguos no tienen `kind`). */
+export function isRedemption(t: StarTx): boolean {
+  return t.kind ? t.kind === 'canje' : t.reason.startsWith('Canjeaste');
+}
+
+/**
+ * Estrellas ganadas en un rango: todo lo que no es canje, en neto. Así, si desmarcas una
+ * tarea (movimiento negativo antiguo), ese bono deja de contar como ganado.
+ */
+export function earnedBetween(stars: StarTx[], from: number, to: number): number {
+  const net = stars
+    .filter((s) => s.at >= from && s.at < to && !isRedemption(s))
+    .reduce((sum, s) => sum + s.amount, 0);
+  return Math.max(0, net);
+}
+
+/** Clave con que se guardan las estrellas de una clase. */
+export function classRef(date: ISODate, blockId: string): string {
+  return `clase:${date}:${blockId}`;
+}

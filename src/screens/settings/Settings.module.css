@@ -5,21 +5,6 @@
   align-items: center;
 }
 
-.color {
-  position: relative;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-sm);
-  box-shadow: inset 0 0 0 2px rgba(59, 42, 53, 0.1);
-}
-
-.color select {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
 .addRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

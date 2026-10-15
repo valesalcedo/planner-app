@@ -1,4 +1,5 @@
 import type { AppData, ISODate } from '../types';
+import { earnedBetween } from './rewards';
 import { addDays, hhmmToMin, tsAt, weekdayOf } from './time';
 
 export const NO_COURSE = '__sin_ramo__';
@@ -15,6 +16,19 @@ export interface WeekStats {
   estimateRatio: number | null;
   /** Carga académica: ramo → tipo de actividad → minutos. */
   load: Map<string, Map<string, number>>;
+  attendance: AttendanceStats;
+}
+
+export interface AttendanceCount {
+  /** Clases que ya pasaron (sin contar las que no hubo). */
+  total: number;
+  fui: number;
+  falte: number;
+}
+
+export interface AttendanceStats extends AttendanceCount {
+  /** Por ramo (NO_COURSE para clases sin ramo). */
+  byCourse: Map<string, AttendanceCount>;
 }
 
 function addLoad(load: Map<string, Map<string, number>>, course: string, activity: string, min: number) {
@@ -24,12 +38,13 @@ function addLoad(load: Map<string, Map<string, number>>, course: string, activit
   load.set(course, row);
 }
 
-export type StatsInput = Pick<AppData, 'entries' | 'tasks' | 'weekly' | 'skipped' | 'events' | 'stars'>;
+export type StatsInput = Pick<AppData, 'entries' | 'tasks' | 'weekly' | 'skipped' | 'events' | 'stars'> &
+  Partial<Pick<AppData, 'attendance'>>;
 
 /**
  * Estadísticas de la semana que empieza el lunes `weekStart`.
- * Las clases del horario semanal cuentan como asistidas hasta `now`, salvo que estén
- * marcadas como "no hubo clase" ese día. Las evaluaciones con hora también suman.
+ * Las clases del horario semanal que ya pasaron cuentan como asistidas, salvo que estén
+ * marcadas como "no hubo clase" o "falté". Las evaluaciones con hora también suman.
  */
 export function weekStats(data: StatsInput, weekStart: ISODate, now = Date.now()): WeekStats {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -47,12 +62,23 @@ export function weekStats(data: StatsInput, weekStart: ISODate, now = Date.now()
   }
 
   let classTotal = 0;
+  const attendance: AttendanceStats = { total: 0, fui: 0, falte: 0, byCourse: new Map() };
   for (const day of days) {
     const skip = new Set(data.skipped[day] ?? []);
     for (const b of data.weekly) {
       if (b.kind !== 'clase' || b.weekday !== weekdayOf(day) || skip.has(b.id)) continue;
       const endMin = hhmmToMin(b.end);
       if (tsAt(day, endMin) > now) continue;
+      const mark = data.attendance?.[day]?.[b.id];
+      const key = b.courseId ?? NO_COURSE;
+      const c = attendance.byCourse.get(key) ?? { total: 0, fui: 0, falte: 0 };
+      for (const a of [attendance, c]) {
+        a.total++;
+        if (mark === 'fui') a.fui++;
+        if (mark === 'falte') a.falte++;
+      }
+      attendance.byCourse.set(key, c);
+      if (mark === 'falte') continue;
       const min = endMin - hhmmToMin(b.start);
       classTotal += min;
       addLoad(load, b.courseId ?? NO_COURSE, b.activityId ?? 'catedra', min);
@@ -77,9 +103,7 @@ export function weekStats(data: StatsInput, weekStart: ISODate, now = Date.now()
     }
   }
 
-  const starsEarned = data.stars
-    .filter((s) => s.amount > 0 && s.at >= startTs && s.at < endTs)
-    .reduce((sum, s) => sum + s.amount, 0);
+  const starsEarned = earnedBetween(data.stars, startTs, endTs);
 
   return {
     days,
@@ -90,6 +114,7 @@ export function weekStats(data: StatsInput, weekStart: ISODate, now = Date.now()
     starsEarned,
     estimateRatio: estimated > 0 ? logged / estimated : null,
     load,
+    attendance,
   };
 }
 
