@@ -51,8 +51,8 @@
 }
 
 .blockBtn {
-  background: rgba(255, 255, 255, 0.7);
-  color: var(--ink);
+  background: var(--pastel-glass);
+  color: var(--pastel-ink);
   flex-shrink: 0;
 }
 
@@ -77,8 +77,8 @@
   min-height: 40px;
   border: none;
   border-radius: var(--pill);
-  background: rgba(255, 255, 255, 0.7);
-  color: var(--ink);
+  background: var(--pastel-glass);
+  color: var(--pastel-ink);
   font: inherit;
   font-size: 14px;
   font-weight: 800;
@@ -90,13 +90,13 @@
 }
 
 .attendBtn[aria-pressed='true'] {
-  background: var(--ink);
+  background: var(--pastel-ink);
   color: #fff;
 }
 
 .attendStars {
   font-size: 12px;
-  color: var(--yellow-edge);
+  color: var(--pastel-star);
 }
 
 .work {
@@ -111,17 +111,17 @@
 }
 
 .urgent {
-  box-shadow: 0 0 0 2px var(--pink);
+  box-shadow: 0 0 0 2px var(--primary);
 }
 
 .running {
-  background: var(--pink-tint);
+  background: var(--primary-tint);
 }
 
 .gapTag {
   font-size: 11px;
   font-weight: 800;
-  color: var(--pink-deep);
+  color: var(--primary-deep);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -176,8 +176,8 @@
   height: 60px;
   border-radius: var(--pill);
   border: none;
-  background: var(--pink);
-  color: var(--ink);
+  background: var(--primary);
+  color: var(--on-primary);
   display: grid;
   place-items: center;
   box-shadow: var(--shadow-float);

@@ -20,7 +20,7 @@ type Row =
   | { type: 'work'; start: number; end: number; placement: Placement };
 
 const DIFF_LABEL = { facil: 'Fácil', media: 'Media', dificil: 'Difícil' } as const;
-const DIFF_CHIP = { facil: 'chip--mint', media: 'chip--lavender', dificil: 'chip--yellow' } as const;
+const DIFF_CHIP = { facil: 'chip--mint', media: 'chip--lavender', dificil: 'chip--accent' } as const;
 
 export function DayTimeline({ date, plan, doneTasks }: Props) {
   const tasks = useStore((s) => s.tasks);
@@ -87,12 +87,12 @@ export function DayTimeline({ date, plan, doneTasks }: Props) {
       {(allDay.length > 0 || deadlines.length > 0) && (
         <div className="pills">
           {allDay.map((e) => (
-            <span key={e.id} className={`chip ${e.kind === 'evaluacion' ? 'chip--yellow' : 'chip--pink'}`} style={{ fontSize: 13, padding: '6px 10px' }}>
+            <span key={e.id} className={`chip ${e.kind === 'evaluacion' ? 'chip--accent' : 'chip--main'}`} style={{ fontSize: 13, padding: '6px 10px' }}>
               {e.title}
             </span>
           ))}
           {deadlines.map((t) => (
-            <span key={t.id} className="chip chip--pink" style={{ fontSize: 13, padding: '6px 10px' }}>
+            <span key={t.id} className="chip chip--main" style={{ fontSize: 13, padding: '6px 10px' }}>
               Vence hoy: {t.title}
             </span>
           ))}
@@ -309,10 +309,10 @@ function WorkCard({ placement, task, date, courseName, short, running, onStart, 
       </div>
       <div className="row row--between">
         <div className="pills" style={{ gap: 6 }}>
-          {urgentLabel && <span className="chip chip--pink">{urgentLabel}</span>}
+          {urgentLabel && <span className="chip chip--main">{urgentLabel}</span>}
           <span className={`chip ${DIFF_CHIP[task.difficulty]}`}>{DIFF_LABEL[task.difficulty]}</span>
         </div>
-        <button type="button" className={`btn btn--sm ${running ? 'btn--pink' : 'btn--primary'}`} onClick={onStart}>
+        <button type="button" className={`btn btn--sm ${running ? 'btn--main' : 'btn--primary'}`} onClick={onStart}>
           <Icon name={running ? 'timer' : 'play'} size={16} />
           {running ? 'En curso' : 'Empezar'}
         </button>

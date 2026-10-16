@@ -1,0 +1,63 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.card {
+  position: relative;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px;
+  min-height: 76px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.card[aria-pressed='true'] {
+  border-color: var(--ink);
+}
+
+.preview {
+  display: block;
+}
+
+.bar {
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+}
+
+.dot {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--pill);
+}
+
+.name {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--pill);
+  background: var(--ink);
+  color: var(--on-ink);
+  display: grid;
+  place-items: center;
+}
+
+.customRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}

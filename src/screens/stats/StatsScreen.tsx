@@ -108,12 +108,12 @@ export function StatsScreen() {
             attRows.map(([id, c]) => (
               <div key={id} className="row row--between small">
                 <span className="row" style={{ gap: 8, minWidth: 0 }}>
-                  <span className={styles.swatch} style={{ background: course(id)?.color ?? '#e9d9df' }} aria-hidden="true" />
+                  <span className={styles.swatch} style={{ background: course(id)?.color ?? 'var(--switch-off)' }} aria-hidden="true" />
                   {courseName(id)}
                 </span>
                 <span style={{ fontWeight: 700, flexShrink: 0 }}>
                   {c.fui}/{c.fui + c.falte}
-                  {c.falte > 0 && <span style={{ color: 'var(--pink-deep)' }}> · faltaste {c.falte}</span>}
+                  {c.falte > 0 && <span style={{ color: 'var(--primary-deep)' }}> · faltaste {c.falte}</span>}
                 </span>
               </div>
             ))}
@@ -132,7 +132,7 @@ export function StatsScreen() {
           <h2 id="load-title" className="section-title">
             Carga académica
           </h2>
-          <button type="button" className="btn btn--sm btn--yellow" onClick={copy} disabled={loadRows.length === 0}>
+          <button type="button" className="btn btn--sm btn--accent" onClick={copy} disabled={loadRows.length === 0}>
             <Icon name="copy" size={16} /> Copiar
           </button>
         </div>
@@ -154,7 +154,7 @@ export function StatsScreen() {
               <tbody key={id}>
                 <tr className={styles.courseRow}>
                   <th scope="rowgroup">
-                    <span className={styles.swatch} style={{ background: course(id)?.color ?? '#e9d9df' }} aria-hidden="true" />
+                    <span className={styles.swatch} style={{ background: course(id)?.color ?? 'var(--switch-off)' }} aria-hidden="true" />
                     {courseName(id)}
                   </th>
                   <td>{formatHours(total)}</td>

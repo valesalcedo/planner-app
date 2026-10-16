@@ -1,5 +1,6 @@
 .balance {
-  background: var(--yellow);
+  background: var(--accent);
+  color: var(--on-accent);
   border-radius: 22px;
   padding: 16px 18px;
   display: flex;
@@ -22,12 +23,12 @@
 }
 
 .rules span {
-  background: var(--yellow-soft);
+  background: var(--accent-soft);
   border-radius: var(--radius-sm);
   padding: 6px 8px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--yellow-deep);
+  color: var(--accent-ink);
 }
 
 .grid {

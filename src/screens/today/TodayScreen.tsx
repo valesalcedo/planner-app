@@ -92,7 +92,7 @@ export function TodayScreen() {
             {formatDuration(focusedMin)} enfocada de {formatDuration(plannedMin)} planificadas
           </span>
           {streak > 0 && (
-            <span className="row" style={{ gap: 4, color: 'var(--pink-deep)', whiteSpace: 'nowrap' }}>
+            <span className="row" style={{ gap: 4, color: 'var(--primary-deep)', whiteSpace: 'nowrap' }}>
               <Icon name="flame" size={16} />
               Racha {streak} {streak === 1 ? 'día' : 'días'}
               {multiplier > 1 && ` ×${multiplier}`}

@@ -46,7 +46,7 @@ export function Icon({ name, size = 22, ...rest }: IconProps) {
   }
   if (name === 'star') {
     return (
-      <svg {...common} fill="var(--yellow-star)" stroke="var(--yellow-edge)" strokeWidth={1.6} strokeLinejoin="round">
+      <svg {...common} fill="var(--star)" stroke="var(--accent-edge)" strokeWidth={1.6} strokeLinejoin="round">
         <path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" />
       </svg>
     );

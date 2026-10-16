@@ -122,6 +122,16 @@ export interface StarTx {
   ref?: string;
 }
 
+/** Tema de colores: uno de los listos o uno personalizado con dos colores. */
+export interface ThemeSetting {
+  /** Id de un tema listo (ver THEME_PRESETS) o "custom". */
+  id: string;
+  /** Solo para el tema personalizado. */
+  primary?: string;
+  accent?: string;
+  dark?: boolean;
+}
+
 export interface Settings {
   dayStart: HHMM;
   dayEnd: HHMM;
@@ -134,6 +144,7 @@ export interface Settings {
   streakMultiplier: number;
   /** Estrellas por marcar que fuiste a una clase. */
   starsPerClass: number;
+  theme: ThemeSetting;
 }
 
 export interface AppData {

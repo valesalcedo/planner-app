@@ -14,6 +14,7 @@ Es una PWA (app web instalable): se publica gratis en GitHub Pages y se agrega a
 - **Asistencia**: en Hoy marcas cada clase como "Fui", "Falté" o "No hubo". Ir a clases suma estrellas y en Semana ves tu porcentaje de asistencia por ramo.
 - **Colores**: cada ramo y cada categoría de actividad (coro, salidas, etc.) tiene su color, de la paleta o elegido a mano, y así se pintan en el horario y en tu día.
 - **Tienda de permisos**: 1 estrella por minuto de foco, bono por tarea terminada según dificultad, estrellas por ir a clases y multiplicador por racha. Los premios y precios los defines tú.
+- **Temas**: en Ajustes cada persona elige los colores de toda la app: 9 temas listos (incluidos dos oscuros) o uno propio con su color principal, su acento y modo oscuro. Los datos y el tema viven en cada teléfono, así que cada amiga tiene el suyo.
 - **Ajustes**: ramos, tipos de actividad, horario del día, reglas de estrellas y respaldo (descargar e importar).
 
 ## Subirla a GitHub y publicarla
@@ -75,7 +76,7 @@ src/
 └── styles/               tokens.css (colores y medidas) y global.css
 ```
 
-Los colores están en `src/styles/tokens.css`: cambia ahí el rosado, amarillo o cualquier tono y se actualiza toda la app.
+Los colores del tema original están en `src/styles/tokens.css`. Los demás temas se definen en `src/lib/theme.ts` (`THEME_PRESETS`): cada uno indica solo fondo, superficie, texto, color principal y acento, y el resto de los tonos se calcula cuidando que el texto se lea (lo revisa `theme.test.ts`).
 
 ### Cómo ordena el día
 

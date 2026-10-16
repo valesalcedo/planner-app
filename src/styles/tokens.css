@@ -1,3 +1,7 @@
+/*
+ * Tema original (rosado y amarillo). Los demás temas reemplazan estos valores
+ * desde src/lib/theme.ts, poniéndolos directo en <html>.
+ */
 :root {
   color-scheme: light;
 
@@ -11,19 +15,19 @@
   --ink-2: #6b5562;
   --ink-3: #8a5a70;
 
-  /* Rosado */
-  --pink: #f48fb1;
-  --pink-soft: #f9c6d5;
-  --pink-tint: #fde7ee;
-  --pink-deep: #a8325a;
-  --pink-chart: #d9608a;
+  /* Color principal (rosado en el tema original) */
+  --primary: #f48fb1;
+  --primary-soft: #f9c6d5;
+  --primary-tint: #fde7ee;
+  --primary-deep: #a8325a;
+  --primary-strong: #d9608a;
 
-  /* Amarillo */
-  --yellow: #fde68a;
-  --yellow-soft: #fff6cf;
-  --yellow-star: #f5b700;
-  --yellow-deep: #5c4a00;
-  --yellow-edge: #8a6200;
+  /* Color de acento (amarillo en el tema original) */
+  --accent: #fde68a;
+  --accent-soft: #fff6cf;
+  --star: #f5b700;
+  --accent-ink: #5c4a00;
+  --accent-edge: #8a6200;
 
   /* Acentos */
   --lavender: #dcd6f7;
@@ -31,6 +35,24 @@
   --mint: #c9ebd8;
   --mint-ink: #24563d;
   --danger: #b3261e;
+  --danger-edge: #f1c3bf;
+
+  /* Derivados que también cambian con el tema */
+  --on-primary: #3b2a35;
+  --on-accent: #3b2a35;
+  --on-ink: #ffffff;
+  --primary-edge: #e4a9bc;
+  --ink-faint: #c4b1ba;
+  --eval: #c99400;
+  --switch-off: #e9d9df;
+  --knob: #ffffff;
+  --overlay: rgba(59, 42, 53, 0.35);
+  --float-shadow-color: rgba(168, 50, 90, 0.22);
+
+  /* Sobre los colores pastel de ramos y categorías (no cambian con el tema) */
+  --pastel-ink: #3b2a35;
+  --pastel-glass: rgba(255, 255, 255, 0.7);
+  --pastel-star: #8a6200;
 
   --radius-sm: 10px;
   --radius: 14px;
@@ -41,7 +63,7 @@
   --font-body: 'Nunito', ui-rounded, system-ui, sans-serif;
 
   --shadow-soft: 0 1px 0 var(--line);
-  --shadow-float: 0 6px 18px rgba(168, 50, 90, 0.22);
+  --shadow-float: 0 6px 18px var(--float-shadow-color);
 
   --nav-h: 64px;
   --safe-top: env(safe-area-inset-top, 0px);

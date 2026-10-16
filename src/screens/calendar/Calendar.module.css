@@ -29,16 +29,17 @@
 }
 
 .day[data-out] {
-  color: #c4b1ba;
+  color: var(--ink-faint);
 }
 
 .day[data-today] {
   font-weight: 800;
-  box-shadow: inset 0 0 0 2px var(--pink);
+  box-shadow: inset 0 0 0 2px var(--primary);
 }
 
 .day[aria-pressed='true'] {
-  background: var(--pink);
+  background: var(--primary);
+  color: var(--on-primary);
   font-weight: 800;
 }
 
@@ -57,11 +58,11 @@
 }
 
 .dotEval {
-  background: #c99400;
+  background: var(--eval);
 }
 
 .dotEvent {
-  background: var(--pink-chart);
+  background: var(--primary-strong);
 }
 
 .item {
@@ -78,15 +79,17 @@
 }
 
 .evaluacion {
-  background: var(--yellow);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .entrega {
-  background: var(--pink-soft);
+  background: var(--primary-soft);
 }
 
 .evento {
   background: var(--lavender);
+  color: var(--lavender-ink);
 }
 
 .task {

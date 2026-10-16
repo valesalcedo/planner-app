@@ -45,7 +45,7 @@ export function FocusChart({ days, values }: Props) {
               {v > 0 && (
                 <path
                   d={roundedTop(cx - BAR_W / 2, top, BAR_W, hgt, Math.min(4, hgt))}
-                  fill="var(--pink-chart)"
+                  fill="var(--primary-strong)"
                   opacity={active === null || active === i ? 1 : 0.45}
                 />
               )}

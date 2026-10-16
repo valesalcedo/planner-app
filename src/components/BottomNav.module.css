@@ -25,7 +25,7 @@
 }
 
 .item[aria-current='page'] {
-  color: var(--pink-deep);
+  color: var(--primary-deep);
   font-weight: 800;
 }
 
@@ -41,6 +41,6 @@
   width: 10px;
   height: 10px;
   border-radius: 999px;
-  background: var(--pink);
+  background: var(--primary);
   border: 2px solid var(--surface);
 }

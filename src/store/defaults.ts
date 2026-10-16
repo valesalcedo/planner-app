@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS: Settings = {
   streakDays: 3,
   streakMultiplier: 1.2,
   starsPerClass: 5,
+  theme: { id: 'original' },
 };
 
 /** Paleta pastel sugerida. Además se puede elegir cualquier color a mano. */

@@ -7,6 +7,7 @@ import { snapshot, useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
 import type { AppData } from '../../types';
 import styles from './Settings.module.css';
+import { ThemePicker } from './ThemePicker';
 
 export function SettingsScreen() {
   const courses = useStore((s) => s.courses);
@@ -71,6 +72,8 @@ export function SettingsScreen() {
         </h1>
       </header>
 
+      <ThemePicker />
+
       <section className="card card--lg stack" aria-labelledby="courses-title">
         <h2 id="courses-title" className="section-title">
           Ramos
@@ -105,7 +108,7 @@ export function SettingsScreen() {
           }}
         >
           <input className="input" placeholder="Nuevo ramo" aria-label="Nuevo ramo" value={newCourse} onChange={(e) => setNewCourse(e.target.value)} />
-          <button type="submit" className="btn btn--pink" disabled={!newCourse.trim()}>
+          <button type="submit" className="btn btn--main" disabled={!newCourse.trim()}>
             Agregar
           </button>
         </form>
@@ -147,7 +150,7 @@ export function SettingsScreen() {
           }}
         >
           <input className="input" placeholder="Nueva categoría" aria-label="Nueva categoría" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} />
-          <button type="submit" className="btn btn--pink" disabled={!newCategory.trim()}>
+          <button type="submit" className="btn btn--main" disabled={!newCategory.trim()}>
             Agregar
           </button>
         </form>
@@ -180,7 +183,7 @@ export function SettingsScreen() {
           }}
         >
           <input className="input" placeholder="Nuevo tipo" aria-label="Nuevo tipo de actividad" value={newActivity} onChange={(e) => setNewActivity(e.target.value)} />
-          <button type="submit" className="btn btn--pink" disabled={!newActivity.trim()}>
+          <button type="submit" className="btn btn--main" disabled={!newActivity.trim()}>
             Agregar
           </button>
         </form>
@@ -229,10 +232,10 @@ export function SettingsScreen() {
           Tus datos viven solo en este iPhone. Descarga un respaldo de vez en cuando por si borras los datos de Safari o cambias de teléfono.
         </p>
         <div className="grid-2">
-          <button type="button" className="btn btn--yellow" onClick={exportBackup}>
+          <button type="button" className="btn btn--accent" onClick={exportBackup}>
             Descargar
           </button>
-          <label className="btn" style={{ border: '2px solid var(--yellow)' }}>
+          <label className="btn" style={{ border: '2px solid var(--accent)' }}>
             Importar
             <input type="file" accept="application/json,.json" className="sr-only" onChange={importBackup} />
           </label>

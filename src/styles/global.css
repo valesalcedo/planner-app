@@ -43,7 +43,7 @@ h3 {
 }
 
 :focus-visible {
-  outline: 3px solid var(--pink-deep);
+  outline: 3px solid var(--primary-deep);
   outline-offset: 2px;
 }
 
@@ -137,7 +137,7 @@ h3 {
   padding: 28px 16px;
   color: var(--ink-2);
   font-size: 14px;
-  border: 2px dashed var(--pink-soft);
+  border: 2px dashed var(--primary-soft);
   border-radius: var(--radius);
 }
 
@@ -166,27 +166,29 @@ h3 {
 
 .btn--primary {
   background: var(--ink);
-  color: #fff;
+  color: var(--on-ink);
 }
 
-.btn--pink {
-  background: var(--pink);
+.btn--main {
+  background: var(--primary);
+  color: var(--on-primary);
 }
 
-.btn--yellow {
-  background: var(--yellow);
+.btn--accent {
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .btn--ghost {
   background: transparent;
-  border: 2px dashed #e4a9bc;
-  color: var(--pink-deep);
+  border: 2px dashed var(--primary-edge);
+  color: var(--primary-deep);
 }
 
 .btn--danger {
   background: transparent;
   color: var(--danger);
-  border: 2px solid #f1c3bf;
+  border: 2px solid var(--danger-edge);
 }
 
 .btn--block {
@@ -228,16 +230,17 @@ h3 {
   font-weight: 800;
   padding: 3px 8px;
   border-radius: var(--pill);
-  background: var(--pink-tint);
+  background: var(--primary-tint);
   white-space: nowrap;
 }
 
-.chip--pink {
-  background: var(--pink-soft);
+.chip--main {
+  background: var(--primary-soft);
 }
 
-.chip--yellow {
-  background: var(--yellow);
+.chip--accent {
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .chip--lavender {
@@ -268,7 +271,8 @@ h3 {
 }
 
 .segmented button[aria-pressed='true'] {
-  background: var(--yellow);
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: 800;
 }
 
@@ -289,7 +293,8 @@ h3 {
 }
 
 .pill[aria-pressed='true'] {
-  background: var(--pink);
+  background: var(--primary);
+  color: var(--on-primary);
   font-weight: 800;
 }
 
@@ -310,7 +315,7 @@ h3 {
 
 .input {
   width: 100%;
-  border: 2px solid var(--pink-soft);
+  border: 2px solid var(--primary-soft);
   background: var(--surface);
   border-radius: var(--radius);
   padding: 11px 13px;
@@ -321,7 +326,7 @@ h3 {
 
 .input:focus {
   outline: none;
-  border-color: var(--pink);
+  border-color: var(--primary);
 }
 
 select.input {
@@ -345,7 +350,7 @@ select.input {
   width: 52px;
   height: 32px;
   border-radius: var(--pill);
-  background: #e9d9df;
+  background: var(--switch-off);
   position: relative;
   flex-shrink: 0;
   transition: background 0.15s;
@@ -360,12 +365,12 @@ select.input {
   width: 26px;
   height: 26px;
   border-radius: var(--pill);
-  background: #fff;
+  background: var(--knob);
   transition: transform 0.15s;
 }
 
 .switch:checked {
-  background: var(--pink);
+  background: var(--primary);
 }
 
 .switch:checked::after {
@@ -377,7 +382,7 @@ select.input {
   width: 24px;
   height: 24px;
   border-radius: 8px;
-  border: 2px solid #e4a9bc;
+  border: 2px solid var(--primary-edge);
   background: var(--surface);
   flex-shrink: 0;
   display: grid;
@@ -387,16 +392,16 @@ select.input {
 }
 
 .checkbox:checked {
-  background: var(--pink);
-  border-color: var(--pink);
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 .checkbox:checked::after {
   content: '';
   width: 10px;
   height: 6px;
-  border-left: 2.5px solid var(--ink);
-  border-bottom: 2.5px solid var(--ink);
+  border-left: 2.5px solid var(--on-primary);
+  border-bottom: 2.5px solid var(--on-primary);
   transform: translateY(-1px) rotate(-45deg);
 }
 
@@ -411,7 +416,7 @@ select.input {
 
 .progress {
   height: 10px;
-  background: var(--pink-tint);
+  background: var(--primary-tint);
   border-radius: var(--pill);
   overflow: hidden;
 }
@@ -419,7 +424,7 @@ select.input {
 .progress > span {
   display: block;
   height: 100%;
-  background: var(--pink);
+  background: var(--primary);
   border-radius: var(--pill);
   transition: width 0.3s;
 }
@@ -441,7 +446,7 @@ select.input {
   bottom: calc(var(--nav-h) + 24px + var(--safe-bottom));
   transform: translateX(-50%);
   background: var(--ink);
-  color: #fff;
+  color: var(--on-ink);
   padding: 10px 18px;
   border-radius: var(--pill);
   font-weight: 700;

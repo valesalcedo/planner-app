@@ -149,13 +149,13 @@ export function FocusScreen() {
 
         <div className={styles.ring}>
           <svg width="260" height="260" viewBox="0 0 260 260" aria-hidden="true">
-            <circle cx="130" cy="130" r={RING_R} fill="#fff" stroke="var(--pink-soft)" strokeWidth="16" />
+            <circle cx="130" cy="130" r={RING_R} fill="var(--surface)" stroke="var(--primary-soft)" strokeWidth="16" />
             <circle
               cx="130"
               cy="130"
               r={RING_R}
               fill="none"
-              stroke="var(--pink)"
+              stroke="var(--primary)"
               strokeWidth="16"
               strokeLinecap="round"
               strokeDasharray={RING_LEN}
@@ -187,7 +187,7 @@ export function FocusScreen() {
           ) : (
             <button
               type="button"
-              className="btn btn--pink"
+              className="btn btn--main"
               style={{ minHeight: 52, padding: '12px 24px' }}
               onClick={() => startTimer(task.id, subtask?.id)}
             >

@@ -7,7 +7,7 @@ import { useUI } from '../../store/useUI';
 import type { Reward } from '../../types';
 import styles from './Shop.module.css';
 
-const ACCENTS = ['var(--pink-soft)', 'var(--yellow)', 'var(--lavender)', 'var(--mint)'];
+const ACCENTS = ['var(--primary-soft)', 'var(--accent)', 'var(--lavender)', 'var(--mint)'];
 
 export function ShopScreen() {
   const balance = useBalance();
@@ -35,7 +35,7 @@ export function ShopScreen() {
           <Icon name="star" size={42} />
           <div className="stack" style={{ gap: 0 }}>
             <span className={styles.balanceValue}>{balance}</span>
-            <span className="small" style={{ fontWeight: 700, color: 'var(--yellow-deep)' }}>
+            <span className="small" style={{ fontWeight: 700, color: 'var(--accent-ink)' }}>
               estrellas disponibles
             </span>
           </div>
@@ -51,7 +51,7 @@ export function ShopScreen() {
           </span>
         </div>
         {streak > 0 && (
-          <span className="small" style={{ fontWeight: 700, color: 'var(--yellow-deep)' }}>
+          <span className="small" style={{ fontWeight: 700, color: 'var(--accent-ink)' }}>
             Llevas {streak} {streak === 1 ? 'día' : 'días'} de racha
             {multiplier > 1 ? `: tus estrellas valen ×${multiplier}` : ''}
           </span>
@@ -112,7 +112,7 @@ export function ShopScreen() {
           {history.map((t) => (
             <div key={t.id} className="row row--between small" style={{ gap: 4 }}>
               <span style={{ minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.reason}</span>
-              <span style={{ fontWeight: 800, color: t.amount < 0 ? 'var(--pink-deep)' : 'var(--mint-ink)', flexShrink: 0 }}>
+              <span style={{ fontWeight: 800, color: t.amount < 0 ? 'var(--primary-deep)' : 'var(--mint-ink)', flexShrink: 0 }}>
                 {t.amount > 0 ? `+${t.amount}` : t.amount}
               </span>
               <button

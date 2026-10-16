@@ -12,7 +12,7 @@
 }
 
 .sheet::backdrop {
-  background: rgba(59, 42, 53, 0.35);
+  background: var(--overlay);
 }
 
 .inner {

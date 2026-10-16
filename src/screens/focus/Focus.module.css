@@ -1,5 +1,5 @@
 .focusScreen {
-  background: var(--pink-tint);
+  background: var(--primary-tint);
 }
 
 .center {
@@ -13,7 +13,7 @@
 .eyebrow {
   font-size: 13px;
   font-weight: 800;
-  color: var(--pink-deep);
+  color: var(--primary-deep);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
