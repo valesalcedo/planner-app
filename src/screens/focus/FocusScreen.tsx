@@ -29,6 +29,7 @@ export function FocusScreen() {
   const setTaskDone = useStore((s) => s.setTaskDone);
   const setSubtaskDone = useStore((s) => s.setSubtaskDone);
   const showToast = useUI((s) => s.showToast);
+  const openTimeLog = useUI((s) => s.openTimeLog);
   const { multiplier } = useStreak();
 
   const [paused, setPaused] = useState<Selection | null>(null);
@@ -123,6 +124,9 @@ export function FocusScreen() {
             })}
           </ul>
         )}
+        <button type="button" className="btn btn--ghost" onClick={() => openTimeLog()}>
+          <Icon name="clock" size={18} /> ¿Se te olvidó el cronómetro? Agrega tiempo
+        </button>
         {task && (
           <button type="button" className="btn" onClick={() => setPicking(false)}>
             Volver al cronómetro
@@ -224,6 +228,9 @@ export function FocusScreen() {
           <span>Total</span>
           <span>{formatDuration((byTask.get(task.id) ?? 0) + elapsedMs / 60000)}</span>
         </div>
+        <button type="button" className="btn btn--sm btn--ghost" style={{ alignSelf: 'flex-start' }} onClick={() => openTimeLog({ taskId: task.id })}>
+          <Icon name="plus" size={16} /> Agregar tiempo a mano
+        </button>
       </section>
     </div>
   );

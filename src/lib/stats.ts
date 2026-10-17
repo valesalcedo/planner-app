@@ -3,6 +3,7 @@ import { earnedBetween } from './rewards';
 import { addDays, hhmmToMin, tsAt, weekdayOf } from './time';
 
 export const NO_COURSE = '__sin_ramo__';
+export const NO_CATEGORY = '__sin_categoria__';
 
 export interface WeekStats {
   days: ISODate[];
@@ -16,6 +17,9 @@ export interface WeekStats {
   estimateRatio: number | null;
   /** Carga académica: ramo → tipo de actividad → minutos. */
   load: Map<string, Map<string, number>>;
+  /** Minutos en tareas personales (no académicas), por categoría. */
+  personal: Map<string, number>;
+  personalTotal: number;
   attendance: AttendanceStats;
 }
 
@@ -52,13 +56,19 @@ export function weekStats(data: StatsInput, weekStart: ISODate, now = Date.now()
   const endTs = tsAt(addDays(weekStart, 7), 0);
   const load = new Map<string, Map<string, number>>();
   const focusByDay = Array(7).fill(0) as number[];
+  const personal = new Map<string, number>();
 
   for (const e of data.entries) {
     if (e.end <= startTs || e.start >= endTs) continue;
     const min = (Math.min(e.end, endTs) - Math.max(e.start, startTs)) / 60000;
     const dayIdx = Math.min(6, Math.floor((Math.max(e.start, startTs) - startTs) / 86400000));
     focusByDay[dayIdx] += min;
-    addLoad(load, e.courseId ?? NO_COURSE, e.activityId, min);
+    if (e.personal) {
+      const cat = e.categoryId ?? NO_CATEGORY;
+      personal.set(cat, (personal.get(cat) ?? 0) + min);
+    } else {
+      addLoad(load, e.courseId ?? NO_COURSE, e.activityId, min);
+    }
   }
 
   let classTotal = 0;
@@ -114,6 +124,8 @@ export function weekStats(data: StatsInput, weekStart: ISODate, now = Date.now()
     starsEarned,
     estimateRatio: estimated > 0 ? logged / estimated : null,
     load,
+    personal,
+    personalTotal: [...personal.values()].reduce((a, b) => a + b, 0),
     attendance,
   };
 }

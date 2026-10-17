@@ -44,6 +44,13 @@ export interface Task {
   estimateMin: number;
   courseId?: string;
   activityId: string;
+  /**
+   * Tarea que no es de la U (organización, trámites, casa…). No suma a la carga académica.
+   * Las tareas antiguas no lo tienen y cuentan como académicas.
+   */
+  personal?: boolean;
+  /** Categoría de una tarea personal. */
+  categoryId?: string;
   subtasks: Subtask[];
   done: boolean;
   doneAt?: number;
@@ -57,8 +64,21 @@ export interface TimeEntry {
   /** Copiados de la tarea al registrar, para que las estadísticas no cambien si editas o borras la tarea. */
   courseId?: string;
   activityId: string;
+  personal?: boolean;
+  categoryId?: string;
   start: number;
   end: number;
+  /** Agregado a mano después, sin usar el cronómetro. */
+  manual?: boolean;
+}
+
+/** Datos para registrar tiempo a mano. */
+export interface ManualEntryInput {
+  taskId: string;
+  subtaskId?: string;
+  date: ISODate;
+  start: HHMM;
+  end: HHMM;
 }
 
 export interface ActiveTimer {

@@ -84,3 +84,44 @@ describe('categorías', () => {
     expect(st().categories.find((c) => c.id === cat)).toBeUndefined();
   });
 });
+
+describe('tiempo a mano', () => {
+  beforeEach(() => st().resetData());
+
+  it('agrega un registro con estrellas y borrarlo las quita', () => {
+    const id = addTestTask();
+    const earned = st().addManualEntry({ taskId: id, date: '2026-10-12', start: '10:00', end: '11:30' });
+    expect(earned).toBe(90);
+    const entry = st().entries[0];
+    expect(entry.manual).toBe(true);
+    expect((entry.end - entry.start) / 60000).toBe(90);
+    expect(balanceOf(st().stars)).toBe(90);
+    st().deleteEntry(entry.id);
+    expect(st().entries).toHaveLength(0);
+    expect(balanceOf(st().stars)).toBe(0);
+  });
+
+  it('rechaza horas al revés o en el futuro', () => {
+    const id = addTestTask();
+    expect(st().addManualEntry({ taskId: id, date: '2026-10-12', start: '11:00', end: '10:00' })).toBeNull();
+    expect(st().addManualEntry({ taskId: id, date: '2999-01-01', start: '10:00', end: '11:00' })).toBeNull();
+    expect(st().entries).toHaveLength(0);
+  });
+
+  it('las tareas personales guardan su categoría y no su ramo', () => {
+    st().addTask({
+      title: 'Ordenar escritorio',
+      date: today(),
+      mustToday: false,
+      difficulty: 'facil',
+      estimateMin: 30,
+      activityId: 'otro',
+      personal: true,
+      categoryId: 'cat-orga',
+      subtasks: [],
+    });
+    const id = st().tasks.at(-1)!.id;
+    st().addManualEntry({ taskId: id, date: '2026-10-12', start: '10:00', end: '10:30' });
+    expect(st().entries[0]).toMatchObject({ personal: true, categoryId: 'cat-orga', courseId: undefined });
+  });
+});

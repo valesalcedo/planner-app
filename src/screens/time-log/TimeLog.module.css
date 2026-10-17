@@ -1,0 +1,48 @@
+.preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--primary-soft);
+  font-weight: 800;
+}
+
+.stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.error {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 2px dashed var(--primary-soft);
+  color: var(--primary-deep);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.entry:last-child {
+  border-bottom: none;
+}

@@ -6,6 +6,7 @@ import { SettingsScreen } from './screens/settings/SettingsScreen';
 import { ShopScreen } from './screens/shop/ShopScreen';
 import { StatsScreen } from './screens/stats/StatsScreen';
 import { TaskForm } from './screens/task-form/TaskForm';
+import { TimeLogForm } from './screens/time-log/TimeLogForm';
 import { TodayScreen } from './screens/today/TodayScreen';
 import { useUI } from './store/useUI';
 
@@ -21,6 +22,7 @@ export function App() {
   const tab = useUI((s) => s.tab);
   const page = useUI((s) => s.page);
   const taskForm = useUI((s) => s.taskForm);
+  const timeLog = useUI((s) => s.timeLog);
   const toast = useUI((s) => s.toast);
 
   const Screen = TABS[tab];
@@ -32,6 +34,7 @@ export function App() {
       </main>
       {page === null && <BottomNav />}
       {taskForm && <TaskForm key={taskForm.taskId ?? 'new'} />}
+      {timeLog && <TimeLogForm key={timeLog.taskId ?? 'any'} />}
       {toast && (
         <div className="toast" role="status">
           {toast}

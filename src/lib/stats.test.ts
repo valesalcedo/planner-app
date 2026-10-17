@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { initialData } from '../store/defaults';
-import { NO_COURSE, weekStats } from './stats';
+import { NO_CATEGORY, NO_COURSE, weekStats } from './stats';
 import { tsAt } from './time';
 
 describe('weekStats', () => {
@@ -47,5 +47,19 @@ describe('weekStats', () => {
     expect(s.classTotal).toBe(120);
     expect(s.attendance).toMatchObject({ total: 3, fui: 1, falte: 1 });
     expect(s.attendance.byCourse.get('calc')).toEqual({ total: 3, fui: 1, falte: 1 });
+  });
+
+  it('las tareas personales no suman a la carga académica', () => {
+    const data = initialData();
+    data.entries = [
+      { id: 'a', taskId: 't', activityId: 'otro', personal: true, categoryId: 'cat-orga', start: tsAt('2026-10-13', 600), end: tsAt('2026-10-13', 660) },
+      { id: 'b', taskId: 'u', activityId: 'otro', personal: true, start: tsAt('2026-10-13', 700), end: tsAt('2026-10-13', 730) },
+    ];
+    const s = weekStats(data, '2026-10-12', tsAt('2026-10-16', 0));
+    expect(s.focusTotal).toBe(90);
+    expect(s.load.size).toBe(0);
+    expect(s.personal.get('cat-orga')).toBe(60);
+    expect(s.personal.get(NO_CATEGORY)).toBe(30);
+    expect(s.personalTotal).toBe(90);
   });
 });

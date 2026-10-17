@@ -18,8 +18,9 @@ export function TaskList({ tasks, date }: Props) {
   const setSubtaskDone = useStore((s) => s.setSubtaskDone);
   const startTimer = useStore((s) => s.startTimer);
   const openTaskForm = useUI((s) => s.openTaskForm);
+  const openTimeLog = useUI((s) => s.openTimeLog);
   const setTab = useUI((s) => s.setTab);
-  const { course } = useLookups();
+  const { course, category } = useLookups();
   const { byTask, bySub } = loggedMinutes(entries);
 
   if (tasks.length === 0) {
@@ -48,9 +49,19 @@ export function TaskList({ tasks, date }: Props) {
               </span>
               <span className="small muted">
                 {formatDuration(byTask.get(t.id) ?? 0)} de {formatDuration(t.estimateMin)}
-                {course(t.courseId) && ` · ${course(t.courseId)!.name}`}
+                {t.personal
+                  ? ` · ${category(t.categoryId)?.name ?? 'Personal'}`
+                  : course(t.courseId) && ` · ${course(t.courseId)!.name}`}
                 {t.date < date && ` · atrasada desde el ${formatShortDate(t.date)}`}
               </span>
+            </button>
+            <button
+              type="button"
+              className="icon-btn icon-btn--plain"
+              aria-label={`Agregar tiempo a "${t.title}"`}
+              onClick={() => openTimeLog({ taskId: t.id })}
+            >
+              <Icon name="clock" size={18} />
             </button>
             {!t.done && (
               <button

@@ -26,6 +26,7 @@ export function initialData(): AppData {
     categories: [
       { id: 'cat-coro', name: 'Coro', color: '#BFB3F0' },
       { id: 'cat-social', name: 'Salidas sociales', color: '#FFBFA0' },
+      { id: 'cat-orga', name: 'Organización', color: '#C9EBD8' },
     ],
     activityTypes: [
       { id: 'catedra', name: 'Cátedra (clases)' },

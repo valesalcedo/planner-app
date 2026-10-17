@@ -7,18 +7,36 @@ import type {
   Category,
   Course,
   ISODate,
+  ManualEntryInput,
   Reward,
   Settings,
   StarKind,
   Task,
+  TimeEntry,
   WeeklyBlock,
 } from '../types';
 import { uid } from '../lib/id';
 import { balanceOf, bonusFor, classRef, computeStreak, multiplierFor, starsForFocus } from '../lib/rewards';
-import { today } from '../lib/time';
+import { hhmmToMin, today, tsAt } from '../lib/time';
 import { initialData } from './defaults';
 
 type Draft<T extends { id: string }> = Omit<T, 'id'>;
+
+/** Registro de tiempo con los datos de la tarea copiados, para que las estadísticas no cambien después. */
+function entryFor(task: Task, subtaskId: string | undefined, start: number, end: number, manual?: boolean): TimeEntry {
+  return {
+    id: uid(),
+    taskId: task.id,
+    subtaskId,
+    courseId: task.personal ? undefined : task.courseId,
+    activityId: task.activityId,
+    personal: task.personal || undefined,
+    categoryId: task.personal ? task.categoryId : undefined,
+    start,
+    end,
+    manual: manual || undefined,
+  };
+}
 
 function pickData(s: AppData): AppData {
   return {
@@ -50,6 +68,13 @@ interface Actions {
   startTimer: (taskId: string, subtaskId?: string) => void;
   /** Detiene el cronómetro, guarda el registro y suma estrellas. Devuelve las estrellas ganadas. */
   stopTimer: () => number;
+  /**
+   * Registra tiempo a mano (por si se te olvidó el cronómetro) y suma estrellas.
+   * Devuelve las estrellas ganadas, o null si las horas no son válidas.
+   */
+  addManualEntry: (input: ManualEntryInput) => number | null;
+  /** Borra un registro de tiempo y las estrellas que dio. */
+  deleteEntry: (id: string) => void;
 
   saveBlock: (b: WeeklyBlock | Draft<WeeklyBlock>) => void;
   deleteBlock: (id: string) => void;
@@ -179,23 +204,32 @@ export const useStore = create<Store>()(
           const task = get().tasks.find((t) => t.id === timer.taskId);
           set({ activeTimer: null });
           if (!task || end - timer.startedAt < 30_000) return 0;
-          set((s) => ({
-            entries: [
-              ...s.entries,
-              {
-                id: uid(),
-                taskId: task.id,
-                subtaskId: timer.subtaskId,
-                courseId: task.courseId,
-                activityId: task.activityId,
-                start: timer.startedAt,
-                end,
-              },
-            ],
-          }));
+          const entry = entryFor(task, timer.subtaskId, timer.startedAt, end);
+          set((s) => ({ entries: [...s.entries, entry] }));
           const earned = starsForFocus((end - timer.startedAt) / 60000, get().settings, currentMultiplier());
-          award(earned, `Foco en "${task.title}"`, 'foco', task.id);
+          award(earned, `Foco en "${task.title}"`, 'foco', entry.id);
           return earned;
+        },
+
+        addManualEntry: ({ taskId, subtaskId, date, start, end }) => {
+          const task = get().tasks.find((t) => t.id === taskId);
+          const from = hhmmToMin(start);
+          const to = hhmmToMin(end);
+          if (!task || !(to > from)) return null;
+          const startTs = tsAt(date, from);
+          const endTs = tsAt(date, to);
+          if (startTs > Date.now()) return null;
+          const entry = entryFor(task, subtaskId, startTs, endTs, true);
+          set((s) => ({ entries: [...s.entries, entry] }));
+          const earned = starsForFocus(to - from, get().settings, currentMultiplier());
+          award(earned, `Tiempo agregado a "${task.title}"`, 'foco', entry.id);
+          return earned;
+        },
+
+        deleteEntry: (id) => {
+          // Los registros nuevos guardan sus estrellas con el id del registro; los antiguos no se pueden separar.
+          revoke('foco', id);
+          set((s) => ({ entries: s.entries.filter((e) => e.id !== id) }));
         },
 
         saveBlock: (b) => set((s) => ({ weekly: upsert(s.weekly, b) })),
@@ -256,6 +290,7 @@ export const useStore = create<Store>()(
             categories: s.categories.filter((c) => c.id !== id),
             weekly: s.weekly.map((b) => (b.categoryId === id ? { ...b, categoryId: undefined } : b)),
             events: s.events.map((e) => (e.categoryId === id ? { ...e, categoryId: undefined } : e)),
+            tasks: s.tasks.map((t) => (t.categoryId === id ? { ...t, categoryId: undefined } : t)),
           })),
 
         saveReward: (r) => set((s) => ({ rewards: upsert(s.rewards, r) })),

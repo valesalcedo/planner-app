@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { useLookups } from '../../hooks/useDerived';
-import { NO_COURSE, loadAsText, weekStats } from '../../lib/stats';
+import { NO_CATEGORY, NO_COURSE, loadAsText, weekStats } from '../../lib/stats';
 import { addDays, formatHours, formatShortDate, startOfWeek, today } from '../../lib/time';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../../store/useStore';
@@ -24,7 +24,7 @@ export function StatsScreen() {
     })),
   );
   const showToast = useUI((s) => s.showToast);
-  const { course, activityName } = useLookups();
+  const { course, category, activityName } = useLookups();
 
   const stats = useMemo(() => weekStats(data, week), [data, week]);
   const label = `${formatShortDate(week)} – ${formatShortDate(addDays(week, 6))}`;
@@ -42,6 +42,10 @@ export function StatsScreen() {
       showToast('No se pudo copiar');
     }
   };
+
+  const personalRows = [...stats.personal.entries()].sort((a, b) =>
+    a[0] === NO_CATEGORY ? 1 : b[0] === NO_CATEGORY ? -1 : b[1] - a[1],
+  );
 
   const ratio = stats.estimateRatio;
   const att = stats.attendance;
@@ -137,7 +141,7 @@ export function StatsScreen() {
           </button>
         </div>
         <p className="small muted" style={{ margin: 0 }}>
-          Horas por ramo y tipo de actividad, sumando clases del horario (menos las que faltaste), evaluaciones y tiempo cronometrado.
+          Horas por ramo y tipo de actividad, sumando clases del horario (menos las que faltaste), evaluaciones y tiempo trabajado en tareas de la U.
         </p>
         {loadRows.length === 0 ? (
           <p className="empty" style={{ margin: 0 }}>Todavía no hay registros esta semana.</p>
@@ -172,6 +176,29 @@ export function StatsScreen() {
           </table>
         )}
       </section>
+
+      {personalRows.length > 0 && (
+        <section className="card card--lg stack" aria-labelledby="personal-title">
+          <div className="row row--between">
+            <h2 id="personal-title" className="section-title">
+              Tareas personales
+            </h2>
+            <span style={{ fontWeight: 800 }}>{formatHours(stats.personalTotal)} h</span>
+          </div>
+          <p className="small muted" style={{ margin: 0 }}>
+            Organización y otras cosas que no son de la U. No se suman a la carga académica.
+          </p>
+          {personalRows.map(([id, min]) => (
+            <div key={id} className="row row--between small">
+              <span className="row" style={{ gap: 8, minWidth: 0 }}>
+                <span className={styles.swatch} style={{ background: category(id)?.color ?? 'var(--switch-off)' }} aria-hidden="true" />
+                {id === NO_CATEGORY ? 'Sin categoría' : category(id)?.name ?? 'Categoría borrada'}
+              </span>
+              <span style={{ fontWeight: 700, flexShrink: 0 }}>{formatHours(min)} h</span>
+            </div>
+          ))}
+        </section>
+      )}
 
       {ratio !== null && (
         <section className="card stack" aria-labelledby="est-title">

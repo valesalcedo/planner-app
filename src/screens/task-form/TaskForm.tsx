@@ -3,12 +3,14 @@ import { Icon } from '../../components/Icon';
 import { Sheet } from '../../components/Sheet';
 import { uid } from '../../lib/id';
 import { today } from '../../lib/time';
+import { COURSE_COLORS } from '../../store/defaults';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
 import type { Difficulty, Subtask } from '../../types';
 import styles from './TaskForm.module.css';
 
 const PRESETS = [15, 30, 45, 60, 90, 120];
+const NEW_CATEGORY = '__nueva__';
 const DIFFICULTIES: { id: Difficulty; label: string }[] = [
   { id: 'facil', label: 'Fácil' },
   { id: 'media', label: 'Media' },
@@ -22,15 +24,20 @@ export function TaskForm() {
   const existing = useStore((s) => s.tasks.find((t) => t.id === formState?.taskId));
   const courses = useStore((s) => s.courses);
   const activityTypes = useStore((s) => s.activityTypes);
+  const categories = useStore((s) => s.categories);
+  const saveCategory = useStore((s) => s.saveCategory);
   const addTask = useStore((s) => s.addTask);
   const updateTask = useStore((s) => s.updateTask);
   const deleteTask = useStore((s) => s.deleteTask);
   const openPage = useUI((s) => s.openPage);
+  const openTimeLog = useUI((s) => s.openTimeLog);
 
   const [title, setTitle] = useState(existing?.title ?? '');
   const [date, setDate] = useState(existing?.date ?? formState?.date ?? today());
   const [deadline, setDeadline] = useState(existing?.deadline ?? '');
+  const [personal, setPersonal] = useState(existing?.personal ?? false);
   const [courseId, setCourseId] = useState(existing?.courseId ?? '');
+  const [categoryId, setCategoryId] = useState(existing?.categoryId ?? '');
   const [activityId, setActivityId] = useState(existing?.activityId ?? 'tareas');
   const [estimate, setEstimate] = useState(existing?.estimateMin ?? 30);
   const [difficulty, setDifficulty] = useState<Difficulty>(existing?.difficulty ?? 'media');
@@ -50,8 +57,10 @@ export function TaskForm() {
       title: title.trim(),
       date,
       deadline: deadline || undefined,
-      courseId: courseId || undefined,
-      activityId,
+      personal: personal || undefined,
+      courseId: personal ? undefined : courseId || undefined,
+      categoryId: personal ? categoryId || undefined : undefined,
+      activityId: personal ? 'otro' : activityId,
       estimateMin: clean.length > 0 ? clean.reduce((s, x) => s + x.estimateMin, 0) : Math.max(5, estimate),
       difficulty,
       mustToday,
@@ -93,7 +102,7 @@ export function TaskForm() {
       <form id="task-form" className="stack" style={{ gap: 16 }} onSubmit={submit}>
         <div className="field">
           <label htmlFor="tf-title">Nombre</label>
-          <input id="tf-title" className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: Informe de laboratorio" autoFocus={!existing} required />
+          <input id="tf-title" className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={personal ? 'Ej: Ordenar el escritorio' : 'Ej: Informe de laboratorio'} autoFocus={!existing} required />
         </div>
 
         <div className="grid-2">
@@ -107,33 +116,71 @@ export function TaskForm() {
           </div>
         </div>
 
-        <div className="grid-2">
+        <div className="segmented" role="group" aria-label="Tipo de tarea">
+          <button type="button" aria-pressed={!personal} onClick={() => setPersonal(false)}>
+            De la U
+          </button>
+          <button type="button" aria-pressed={personal} onClick={() => setPersonal(true)}>
+            Personal
+          </button>
+        </div>
+
+        {personal ? (
           <div className="field">
-            <label htmlFor="tf-course">Ramo</label>
-            <select id="tf-course" className="input" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
-              <option value="">Sin ramo</option>
-              {courses.map((c) => (
+            <label htmlFor="tf-category">Categoría</label>
+            <select
+              id="tf-category"
+              className="input"
+              value={categoryId}
+              onChange={(e) => {
+                if (e.target.value !== NEW_CATEGORY) return setCategoryId(e.target.value);
+                const name = prompt('Nombre de la nueva categoría (ej: Organización, Casa, Trámites)')?.trim();
+                if (name) {
+                  setCategoryId(saveCategory({ name, color: COURSE_COLORS[(categories.length + 6) % COURSE_COLORS.length] }));
+                }
+              }}
+            >
+              <option value="">Sin categoría</option>
+              {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
+              <option value={NEW_CATEGORY}>+ Nueva categoría…</option>
             </select>
+            <span className="small muted">No suma a tu carga académica; aparece aparte en Mi semana.</span>
           </div>
-          <div className="field">
-            <label htmlFor="tf-activity">Tipo de actividad</label>
-            <select id="tf-activity" className="input" value={activityId} onChange={(e) => setActivityId(e.target.value)}>
-              {activityTypes.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        {courses.length === 0 && (
-          <button type="button" className={styles.link} onClick={() => { close(); openPage('ajustes'); }}>
-            Agrega tus ramos en Ajustes para ver tu carga académica por curso
-          </button>
+        ) : (
+          <>
+            <div className="grid-2">
+              <div className="field">
+                <label htmlFor="tf-course">Ramo</label>
+                <select id="tf-course" className="input" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+                  <option value="">Sin ramo</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="tf-activity">Tipo de actividad</label>
+                <select id="tf-activity" className="input" value={activityId} onChange={(e) => setActivityId(e.target.value)}>
+                  {activityTypes.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {courses.length === 0 && (
+              <button type="button" className={styles.link} onClick={() => { close(); openPage('ajustes'); }}>
+                Agrega tus ramos en Ajustes para ver tu carga académica por curso
+              </button>
+            )}
+          </>
         )}
 
         <div className="field">
@@ -228,6 +275,16 @@ export function TaskForm() {
             <Icon name="plus" size={18} /> Agregar subtarea
           </button>
         </fieldset>
+
+        {existing && (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => openTimeLog({ taskId: existing.id })}
+          >
+            <Icon name="clock" size={18} /> Agregar o ver tiempo trabajado
+          </button>
+        )}
       </form>
     </Sheet>
   );

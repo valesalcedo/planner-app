@@ -39,7 +39,9 @@ export function DayTimeline({ date, plan, doneTasks }: Props) {
   const moveTask = useStore((s) => s.moveTask);
   const setTab = useUI((s) => s.setTab);
   const showToast = useUI((s) => s.showToast);
-  const { course, blockColor, eventColor } = useLookups();
+  const { course, category, blockColor, eventColor } = useLookups();
+  /** Ramo de una tarea de la U, o categoría de una personal. */
+  const groupName = (t?: Task) => (t?.personal ? category(t.categoryId)?.name ?? 'Personal' : course(t?.courseId)?.name);
 
   const colorOf = (kind: string, sourceId: string): string | undefined => {
     if (kind === 'evento') {
@@ -136,7 +138,7 @@ export function DayTimeline({ date, plan, doneTasks }: Props) {
                   placement={row.placement}
                   task={taskById.get(row.placement.unit.taskId)}
                   date={date}
-                  courseName={course(taskById.get(row.placement.unit.taskId)?.courseId)?.name}
+                  courseName={groupName(taskById.get(row.placement.unit.taskId))}
                   short={plan.slots.find((s) => row.start >= s.start && row.end <= s.end)?.short ?? false}
                   running={
                     activeTimer?.taskId === row.placement.unit.taskId && activeTimer.subtaskId === row.placement.unit.subtaskId
@@ -280,6 +282,7 @@ interface WorkCardProps {
 function WorkCard({ placement, task, date, courseName, short, running, onStart, onComplete }: WorkCardProps) {
   const { unit } = placement;
   const openTaskForm = useUI((s) => s.openTaskForm);
+  const openTimeLog = useUI((s) => s.openTimeLog);
   if (!task) return null;
   const dur = placement.end - placement.start;
   const urgentLabel = task.deadline && task.deadline <= date ? 'Entrega hoy' : unit.tier === 0 ? 'Sí o sí hoy' : unit.tier === 1 ? 'Vence mañana' : null;
@@ -312,10 +315,20 @@ function WorkCard({ placement, task, date, courseName, short, running, onStart, 
           {urgentLabel && <span className="chip chip--main">{urgentLabel}</span>}
           <span className={`chip ${DIFF_CHIP[task.difficulty]}`}>{DIFF_LABEL[task.difficulty]}</span>
         </div>
-        <button type="button" className={`btn btn--sm ${running ? 'btn--main' : 'btn--primary'}`} onClick={onStart}>
-          <Icon name={running ? 'timer' : 'play'} size={16} />
-          {running ? 'En curso' : 'Empezar'}
-        </button>
+        <div className="row" style={{ gap: 4, flexShrink: 0 }}>
+          <button
+            type="button"
+            className="icon-btn icon-btn--plain"
+            aria-label={`Agregar tiempo a "${task.title}"`}
+            onClick={() => openTimeLog({ taskId: task.id })}
+          >
+            <Icon name="clock" size={18} />
+          </button>
+          <button type="button" className={`btn btn--sm ${running ? 'btn--main' : 'btn--primary'}`} onClick={onStart}>
+            <Icon name={running ? 'timer' : 'play'} size={16} />
+            {running ? 'En curso' : 'Empezar'}
+          </button>
+        </div>
       </div>
     </div>
   );

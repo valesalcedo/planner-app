@@ -9,15 +9,23 @@ interface TaskFormState {
   date?: ISODate;
 }
 
+interface TimeLogState {
+  taskId?: string;
+}
+
 interface UIState {
   tab: Tab;
   page: Page;
   taskForm: TaskFormState | null;
+  /** Hoja para agregar tiempo a mano. */
+  timeLog: TimeLogState | null;
   toast: string | null;
   setTab: (tab: Tab) => void;
   openPage: (page: Page) => void;
   openTaskForm: (state?: TaskFormState) => void;
   closeTaskForm: () => void;
+  openTimeLog: (state?: TimeLogState) => void;
+  closeTimeLog: () => void;
   showToast: (msg: string) => void;
 }
 
@@ -28,6 +36,7 @@ export const useUI = create<UIState>()((set) => ({
   tab: 'hoy',
   page: null,
   taskForm: null,
+  timeLog: null,
   toast: null,
   setTab: (tab) => {
     set({ tab, page: null });
@@ -39,6 +48,8 @@ export const useUI = create<UIState>()((set) => ({
   },
   openTaskForm: (state = {}) => set({ taskForm: state }),
   closeTaskForm: () => set({ taskForm: null }),
+  openTimeLog: (state = {}) => set({ timeLog: state }),
+  closeTimeLog: () => set({ timeLog: null }),
   showToast: (msg) => {
     clearTimeout(toastTimer);
     set({ toast: msg });
