@@ -9,7 +9,7 @@ import { useUI } from '../../store/useUI';
 import type { Difficulty, Subtask } from '../../types';
 import styles from './TaskForm.module.css';
 
-const PRESETS = [15, 30, 45, 60, 90, 120];
+const PRESETS = [10, 15, 30, 45, 60, 90, 120, 180, 240];
 const NEW_CATEGORY = '__nueva__';
 const DIFFICULTIES: { id: Difficulty; label: string }[] = [
   { id: 'facil', label: 'Fácil' },
@@ -52,7 +52,7 @@ export function TaskForm() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const clean = subtasks.filter((s) => s.title.trim()).map((s) => ({ ...s, title: s.title.trim(), estimateMin: Math.max(5, s.estimateMin || 0) }));
+    const clean = subtasks.filter((s) => s.title.trim()).map((s) => ({ ...s, title: s.title.trim(), estimateMin: Math.max(1, s.estimateMin || 0) }));
     const data = {
       title: title.trim(),
       date,
@@ -61,7 +61,7 @@ export function TaskForm() {
       courseId: personal ? undefined : courseId || undefined,
       categoryId: personal ? categoryId || undefined : undefined,
       activityId: personal ? 'otro' : activityId,
-      estimateMin: clean.length > 0 ? clean.reduce((s, x) => s + x.estimateMin, 0) : Math.max(5, estimate),
+      estimateMin: clean.length > 0 ? clean.reduce((s, x) => s + x.estimateMin, 0) : Math.max(1, estimate),
       difficulty,
       mustToday,
       subtasks: clean,
@@ -201,8 +201,8 @@ export function TaskForm() {
                 <input
                   type="number"
                   inputMode="numeric"
-                  min={5}
-                  step={5}
+                  min={1}
+                  step={1}
                   className="input"
                   value={PRESETS.includes(estimate) ? '' : estimate}
                   placeholder="Otro"
@@ -250,8 +250,8 @@ export function TaskForm() {
                 className="input"
                 type="number"
                 inputMode="numeric"
-                min={5}
-                step={5}
+                min={1}
+                step={1}
                 aria-label={`Minutos de la subtarea ${i + 1}`}
                 value={s.estimateMin || ''}
                 onChange={(e) => updateSub(s.id, { estimateMin: Number(e.target.value) || 0 })}
