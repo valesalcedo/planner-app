@@ -24,7 +24,7 @@ interface Props {
 }
 
 type Row =
-  | { type: 'busy'; start: number; end: number; title: string; kind: string; sourceId: string; skipped: boolean }
+  | { type: 'busy'; start: number; end: number; title: string; kind: string; sourceId: string }
   | { type: 'travel'; start: number; end: number; block: TravelBlock }
   | { type: 'work'; start: number; end: number; placement: Placement }
   | { type: 'gap'; start: number; end: number }
@@ -82,26 +82,27 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
   const allDay = events.filter((e) => e.date === date && !e.start);
   const deadlines = tasks.filter((t) => t.deadline === date && !t.done);
 
-  const skippedBlocks = weekly.filter((b) => b.weekday === weekdayOf(date) && (skipped ?? []).includes(b.id));
+  // Lo que quitaste (clases que no hubo, traslados que no harás) no se dibuja en el día:
+  // queda solo en "Quitado de este día", al final, por si quieres restaurarlo.
+  const skippedBlocks = weekly
+    .filter((b) => b.weekday === weekdayOf(date) && (skipped ?? []).includes(b.id))
+    .sort((a, b) => hhmmToMin(a.start) - hhmmToMin(b.start));
+  const removedTravel = plan.travel.filter((t) => t.removed);
+  const travelLegs = plan.travel.filter((t) => !t.removed);
   const rows: Row[] = [
-    ...plan.busy.map((b) => ({ type: 'busy' as const, start: b.start, end: b.end, title: b.title, kind: b.kind, sourceId: b.sourceId, skipped: false })),
-    ...skippedBlocks.map((b) => ({
-      type: 'busy' as const,
-      start: hhmmToMin(b.start),
-      end: hhmmToMin(b.end),
-      title: b.title,
-      kind: b.kind,
-      sourceId: b.id,
-      skipped: true,
-    })),
-    ...plan.travel.map((b) => ({ type: 'travel' as const, start: b.start, end: b.end, block: b })),
+    ...plan.busy.map((b) => ({ type: 'busy' as const, start: b.start, end: b.end, title: b.title, kind: b.kind, sourceId: b.sourceId })),
+    ...travelLegs.map((b) => ({ type: 'travel' as const, start: b.start, end: b.end, block: b })),
     // Lo que va dentro de un traslado se muestra adentro de su tarjeta.
     ...plan.placements.filter((p) => !p.travel).map((p) => ({ type: 'work' as const, start: p.start, end: p.end, placement: p })),
     ...(isPast ? [] : plan.gaps.map((g) => ({ type: 'gap' as const, start: g.start, end: g.end }))),
     ...doneBlocks.map((b) => ({ type: 'done' as const, start: b.start, end: b.end, block: b })),
   ].sort((a, b) => a.start - b.start || ORDER[a.type] - ORDER[b.type]);
 
-  const travelLegs = plan.travel.filter((t) => !t.removed);
+  const skipClass = (id: string, title: string) => {
+    toggleSkip(date, id);
+    showToast(`Quitada: ${title}. Puedes restaurarla al final del día`);
+  };
+  const removedCount = skippedBlocks.length + removedTravel.length;
 
   const pinUnit = (key: string, pin: TaskPin | null) => {
     setPin(date, key, pin);
@@ -217,8 +218,7 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
                   kind={row.kind}
                   color={colorOf(row.kind, row.sourceId)}
                   range={`${minToHHMM(row.start)}–${minToHHMM(row.end)}`}
-                  skipped={row.skipped}
-                  onToggle={row.kind === 'evento' ? undefined : () => toggleSkip(date, row.sourceId)}
+                  onSkip={row.kind === 'evento' ? undefined : () => skipClass(row.sourceId, row.title)}
                   attendance={
                     row.kind === 'clase' && tsAt(date, row.start) <= now
                       ? {
@@ -246,7 +246,6 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
                     showToast('¡Buen viaje! Reordené tu día desde ahora');
                   }}
                   onArrive={() => arriveTravel(date, row.block.leg)}
-                  onRestore={() => setTravel(date, row.block.leg, null)}
                 >
                   {plan.placements.filter((p) => p.travel === row.block.leg).map((p) => workCard(p, true))}
                 </TravelCard>
@@ -320,10 +319,39 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
             setMoving(null);
           }}
           onTravel={(patch) => {
-            if (moving.kind === 'travel') setTravel(date, moving.block.leg, patch);
+            if (moving.kind === 'travel') {
+              setTravel(date, moving.block.leg, patch);
+              if (patch?.removed) showToast(`Quitada: ${TRAVEL_TITLE[moving.block.leg].toLowerCase()}. Puedes restaurarla al final del día`);
+            }
             setMoving(null);
           }}
         />
+      )}
+
+      {removedCount > 0 && (
+        <details className={styles.removed}>
+          <summary className={styles.removedSummary}>Quitado de este día ({removedCount})</summary>
+          <ul className={styles.removedList}>
+            {skippedBlocks.map((b) => (
+              <li key={b.id} className={styles.removedItem}>
+                <span className={styles.removedText}>
+                  {b.title} · {b.start}–{b.end}
+                </span>
+                <button type="button" className="btn btn--sm" onClick={() => toggleSkip(date, b.id)}>
+                  Restaurar
+                </button>
+              </li>
+            ))}
+            {removedTravel.map((t) => (
+              <li key={t.leg} className={styles.removedItem}>
+                <span className={styles.removedText}>{TRAVEL_TITLE[t.leg]}</span>
+                <button type="button" className="btn btn--sm" onClick={() => setTravel(date, t.leg, null)}>
+                  Restaurar
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
 
       {doneTasks.length > 0 && (
@@ -356,28 +384,22 @@ interface BusyCardProps {
   kind: string;
   color?: string;
   range: string;
-  skipped: boolean;
-  onToggle?: () => void;
+  /** Quitarla de este día ("no hay" / "no hubo"). */
+  onSkip?: () => void;
   /** Solo clases que ya empezaron: marcar si fuiste. */
   attendance?: { value: Attendance | null; stars: number; onChange: (v: Attendance) => void };
 }
 
 const DEFAULT_BG: Record<string, string> = { clase: '#DCD6F7', actividad: '#C9EBD8', evento: '#FDE68A' };
 
-function BusyCard({ title, kind, color, range, skipped, onToggle, attendance }: BusyCardProps) {
+function BusyCard({ title, kind, color, range, onSkip, attendance }: BusyCardProps) {
   const bg = color ?? DEFAULT_BG[kind] ?? DEFAULT_BG.clase;
   const ink = inkOn(bg);
   const label = kind === 'clase' ? 'Clase' : kind === 'actividad' ? 'Actividad' : 'Evento';
-  const status = skipped ? ' · no hubo' : attendance?.value === 'fui' ? ' · fuiste' : attendance?.value === 'falte' ? ' · faltaste' : '';
-  const style = skipped ? { borderColor: bg } : { background: bg, color: ink };
+  const status = attendance?.value === 'fui' ? ' · fuiste' : attendance?.value === 'falte' ? ' · faltaste' : '';
 
   return (
-    <div
-      className={`${styles.block} ${skipped ? styles.skipped : ''}`}
-      style={style}
-      data-drop={skipped ? undefined : 'busy'}
-      data-title={kind === 'clase' ? 'clase' : title}
-    >
+    <div className={styles.block} style={{ background: bg, color: ink }} data-drop="busy" data-title={kind === 'clase' ? 'clase' : title}>
       <div className={styles.blockHead}>
         <div className="stack" style={{ gap: 0, minWidth: 0 }}>
           <span className={styles.blockTitle}>{title}</span>
@@ -386,13 +408,13 @@ function BusyCard({ title, kind, color, range, skipped, onToggle, attendance }: 
             {status}
           </span>
         </div>
-        {onToggle && (!attendance || skipped) && (
-          <button type="button" className={`btn btn--sm ${styles.blockBtn}`} onClick={onToggle}>
-            {skipped ? 'Restaurar' : 'No hay'}
+        {onSkip && !attendance && (
+          <button type="button" className={`btn btn--sm ${styles.blockBtn}`} onClick={onSkip}>
+            No hay
           </button>
         )}
       </div>
-      {attendance && !skipped && (
+      {attendance && (
         <div className={styles.attend} role="group" aria-label={`Asistencia a ${title}`}>
           <button type="button" className={styles.attendBtn} aria-pressed={attendance.value === 'fui'} onClick={() => attendance.onChange('fui')}>
             <Icon name="check" size={16} strokeWidth={3} /> Fui
@@ -401,8 +423,8 @@ function BusyCard({ title, kind, color, range, skipped, onToggle, attendance }: 
           <button type="button" className={styles.attendBtn} aria-pressed={attendance.value === 'falte'} onClick={() => attendance.onChange('falte')}>
             Falté
           </button>
-          {onToggle && (
-            <button type="button" className={styles.attendBtn} onClick={onToggle}>
+          {onSkip && (
+            <button type="button" className={styles.attendBtn} onClick={onSkip}>
               No hubo
             </button>
           )}
@@ -532,32 +554,15 @@ interface TravelCardProps {
   handle: ReturnType<ReturnType<typeof useDragDrop>['handleProps']>;
   onStart: () => void;
   onArrive: () => void;
-  onRestore: () => void;
   children: React.ReactNode;
 }
 
 /** Traslado casa ↔ U: tiempo ocupado donde solo van tareas para el transporte. */
-function TravelCard({ block, isToday, now, dragging, handle, onStart, onArrive, onRestore, children }: TravelCardProps) {
+function TravelCard({ block, isToday, now, dragging, handle, onStart, onArrive, children }: TravelCardProps) {
   const title = TRAVEL_TITLE[block.leg];
   const range = `${minToHHMM(block.start)}–${minToHHMM(block.end)}`;
   const nowMin = minutesOfDay(now);
   const hasTasks = Array.isArray(children) ? children.length > 0 : !!children;
-
-  if (block.removed) {
-    return (
-      <div className={`${styles.block} ${styles.skipped} ${styles.travel}`}>
-        <div className={styles.blockHead}>
-          <div className="stack" style={{ gap: 0, minWidth: 0 }}>
-            <span className={styles.blockTitle}>{title}</span>
-            <span className="small">Hoy no viajas</span>
-          </div>
-          <button type="button" className={`btn btn--sm ${styles.blockBtn}`} onClick={onRestore}>
-            Restaurar
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   const status = block.arrived
     ? ` · llegaste (${formatDuration(block.end - block.start)})`

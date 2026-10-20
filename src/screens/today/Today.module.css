@@ -56,15 +56,42 @@
   flex-shrink: 0;
 }
 
-.skipped {
-  opacity: 0.55;
-  background: transparent;
-  border-style: dashed;
-  color: var(--ink);
+/* Quitado del día: plegado al final, sin color, para no distraer. */
+.removed {
+  padding: 4px 2px;
 }
 
-.skipped .blockTitle {
-  text-decoration: line-through;
+.removedSummary {
+  cursor: pointer;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-3);
+}
+
+.removedList {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.removedItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.removedText {
+  font-size: 14px;
+  color: var(--ink-3);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .attend {
