@@ -12,12 +12,15 @@ import type {
   Settings,
   StarKind,
   Task,
+  TaskPin,
+  TravelLeg,
+  TravelOverride,
   TimeEntry,
   WeeklyBlock,
 } from '../types';
 import { uid } from '../lib/id';
 import { balanceOf, bonusFor, classRef, computeStreak, multiplierFor, starsForFocus } from '../lib/rewards';
-import { hhmmToMin, today, tsAt } from '../lib/time';
+import { hhmmToMin, minToHHMM, minutesOfDay, today, tsAt } from '../lib/time';
 import { initialData } from './defaults';
 
 type Draft<T extends { id: string }> = Omit<T, 'id'>;
@@ -51,6 +54,8 @@ function pickData(s: AppData): AppData {
     skipped: s.skipped,
     attendance: s.attendance,
     events: s.events,
+    travel: s.travel,
+    pins: s.pins,
     rewards: s.rewards,
     stars: s.stars,
     settings: s.settings,
@@ -81,6 +86,15 @@ interface Actions {
   toggleSkip: (date: ISODate, blockId: string) => void;
   /** Marca si fuiste a una clase ese día (null para dejarla sin marcar). Suma o quita estrellas. */
   setAttendance: (date: ISODate, blockId: string, value: Attendance | null) => void;
+
+  /** Fija una tarea (o subtarea) ese día en una hora o un traslado. null la suelta. */
+  setPin: (date: ISODate, key: string, pin: TaskPin | null) => void;
+  /** Cambia un traslado ese día. null lo deja como venía. */
+  setTravel: (date: ISODate, leg: TravelLeg, patch: TravelOverride | null) => void;
+  /** Le das inicio a un traslado de hoy: parte ahora. */
+  startTravel: (date: ISODate, leg: TravelLeg) => void;
+  /** Llegaste: el traslado dura lo que de verdad duró. */
+  arriveTravel: (date: ISODate, leg: TravelLeg) => void;
 
   saveEvent: (e: CalendarEvent | Draft<CalendarEvent>) => void;
   deleteEvent: (id: string) => void;
@@ -116,10 +130,16 @@ function upsert<T extends { id: string }>(list: T[], item: T | Draft<T>): T[] {
 /** Completa con valores por defecto lo que falte (respaldos o datos de versiones anteriores). */
 function withDefaults(data: Partial<AppData>): AppData {
   const base = initialData();
+  const defined = <T extends object>(o: T | undefined): Partial<T> =>
+    Object.fromEntries(Object.entries(o ?? {}).filter(([, v]) => v !== undefined)) as Partial<T>;
   return {
     ...base,
-    ...data,
-    settings: { ...base.settings, ...data.settings, bonus: { ...base.settings.bonus, ...data.settings?.bonus } },
+    ...defined(data),
+    settings: {
+      ...base.settings,
+      ...defined(data.settings),
+      bonus: { ...base.settings.bonus, ...data.settings?.bonus },
+    },
   };
 }
 
@@ -266,6 +286,36 @@ export const useStore = create<Store>()(
             return { attendance: { ...s.attendance, [date]: day }, skipped: { ...s.skipped, [date]: skippedDay } };
           });
           if (value === 'fui') award(get().settings.starsPerClass, `Fuiste a "${block.title}"`, 'clase', ref);
+        },
+
+        setPin: (date, key, pin) =>
+          set((s) => {
+            const day = { ...(s.pins[date] ?? {}) };
+            if (pin) day[key] = pin;
+            else delete day[key];
+            return { pins: { ...s.pins, [date]: day } };
+          }),
+
+        setTravel: (date, leg, patch) =>
+          set((s) => {
+            const day = { ...(s.travel[date] ?? {}) };
+            if (patch) day[leg] = { ...day[leg], ...patch };
+            else delete day[leg];
+            return { travel: { ...s.travel, [date]: day } };
+          }),
+
+        startTravel: (date, leg) =>
+          get().setTravel(date, leg, {
+            start: minToHHMM(minutesOfDay(Date.now())),
+            startedAt: Date.now(),
+            durationMin: undefined,
+            removed: undefined,
+          }),
+
+        arriveTravel: (date, leg) => {
+          const o = get().travel[date]?.[leg];
+          if (!o?.startedAt) return;
+          get().setTravel(date, leg, { durationMin: Math.max(1, Math.round((Date.now() - o.startedAt) / 60000)) });
         },
 
         saveEvent: (e) => set((s) => ({ events: upsert(s.events, e) })),

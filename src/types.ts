@@ -51,6 +51,8 @@ export interface Task {
   personal?: boolean;
   /** Categoría de una tarea personal. */
   categoryId?: string;
+  /** Se puede hacer en el transporte (lecturas, cosas simples): es lo único que va en los traslados. */
+  onTheGo?: boolean;
   subtasks: Subtask[];
   done: boolean;
   doneAt?: number;
@@ -105,6 +107,27 @@ export interface WeeklyBlock {
   /** Categoría de la actividad (solo bloques que no son clases). */
   categoryId?: string;
 }
+
+/** Traslado casa → U (ida) o U → casa (vuelta). */
+export type TravelLeg = 'ida' | 'vuelta';
+
+/**
+ * Cambios a un traslado en un día puntual. Sin cambios, la ida termina cuando empieza
+ * la primera clase y la vuelta parte cuando termina la última.
+ */
+export interface TravelOverride {
+  /** Hora de inicio elegida (al arrastrarlo o al darle inicio). */
+  start?: HHMM;
+  /** Duración de este viaje, si no es la de siempre (por ejemplo, al marcar que llegaste). */
+  durationMin?: number;
+  /** Momento en que le diste inicio (ya vas en camino). */
+  startedAt?: number;
+  /** Ese día no hay traslado. */
+  removed?: boolean;
+}
+
+/** Dónde dejaste fija una tarea al arrastrarla: a una hora o dentro de un traslado. */
+export type TaskPin = { at: HHMM } | { travel: TravelLeg };
 
 /** Asistencia a una clase un día puntual. "No hubo clase" se guarda aparte en `skipped`. */
 export type Attendance = 'fui' | 'falte';
@@ -164,6 +187,10 @@ export interface Settings {
   streakMultiplier: number;
   /** Estrellas por marcar que fuiste a una clase. */
   starsPerClass: number;
+  /** Agregar traslados de ida y vuelta los días con clases. */
+  travelEnabled: boolean;
+  /** Minutos de cada traslado. */
+  travelMin: number;
   theme: ThemeSetting;
 }
 
@@ -181,6 +208,10 @@ export interface AppData {
   /** Asistencia marcada: fecha → id de bloque → fui/falté. */
   attendance: Record<ISODate, Record<string, Attendance>>;
   events: CalendarEvent[];
+  /** Cambios a los traslados por día: fecha → ida/vuelta → cambios. */
+  travel: Record<ISODate, Partial<Record<TravelLeg, TravelOverride>>>;
+  /** Tareas fijadas a mano por día: fecha → clave de la tarea (o "tarea:subtarea") → dónde. */
+  pins: Record<ISODate, Record<string, TaskPin>>;
   rewards: Reward[];
   stars: StarTx[];
   settings: Settings;

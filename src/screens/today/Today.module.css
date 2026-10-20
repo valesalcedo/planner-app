@@ -193,3 +193,121 @@
   place-items: center;
   box-shadow: var(--shadow-float);
 }
+
+/* Traslados */
+.travel {
+  background: #d6eaf8;
+  color: #23384a;
+  position: relative;
+}
+
+.travel .blockBtn {
+  background: rgba(255, 255, 255, 0.75);
+  color: #23384a;
+}
+
+.travel .work {
+  box-shadow: none;
+}
+
+.travelHint {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+/* Arrastrar y soltar */
+.handle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--ink-3);
+  display: grid;
+  place-items: center;
+  border-radius: var(--pill);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: grab;
+}
+
+.travel .handle {
+  color: inherit;
+  opacity: 0.7;
+}
+
+.work .workMain {
+  padding-right: 36px;
+}
+
+.lifted {
+  opacity: 0.4;
+}
+
+.pinChip {
+  border: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+}
+
+.gap {
+  border: 2px dashed color-mix(in srgb, var(--ink-3) 35%, transparent);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-3);
+}
+
+.ghost {
+  position: fixed;
+  z-index: 60;
+  transform: translate(-50%, -130%);
+  max-width: 200px;
+  padding: 8px 14px;
+  border-radius: var(--pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 800;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  box-shadow: var(--shadow-float);
+}
+
+:global(.drop-over) {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+:global(.drop-over)[data-drop='busy'] {
+  outline-color: var(--ink-3);
+  outline-style: dashed;
+}
+
+:global(body.dragging) {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.travelIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--pill);
+  background: rgba(255, 255, 255, 0.75);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}

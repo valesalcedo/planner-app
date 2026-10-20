@@ -42,6 +42,7 @@ export function TaskForm() {
   const [estimate, setEstimate] = useState(existing?.estimateMin ?? 30);
   const [difficulty, setDifficulty] = useState<Difficulty>(existing?.difficulty ?? 'media');
   const [mustToday, setMustToday] = useState(existing?.mustToday ?? false);
+  const [onTheGo, setOnTheGo] = useState(existing?.onTheGo ?? false);
   const [subtasks, setSubtasks] = useState<Subtask[]>(existing?.subtasks ?? []);
 
   const subTotal = subtasks.reduce((s, st) => s + (st.estimateMin || 0), 0);
@@ -64,6 +65,7 @@ export function TaskForm() {
       estimateMin: clean.length > 0 ? clean.reduce((s, x) => s + x.estimateMin, 0) : Math.max(1, estimate),
       difficulty,
       mustToday,
+      onTheGo: onTheGo || undefined,
       subtasks: clean,
     };
     if (!data.title) return;
@@ -230,6 +232,14 @@ export function TaskForm() {
             <span className="small muted">Se agenda temprano y no se posterga</span>
           </span>
           <input type="checkbox" role="switch" className="switch" checked={mustToday} onChange={(e) => setMustToday(e.target.checked)} />
+        </label>
+
+        <label className="card switch-row">
+          <span className="stack" style={{ gap: 0 }}>
+            <span style={{ fontWeight: 800, fontSize: 14 }}>Se puede en el transporte</span>
+            <span className="small muted">Lecturas o cosas simples: van primero en tus viajes</span>
+          </span>
+          <input type="checkbox" role="switch" className="switch" checked={onTheGo} onChange={(e) => setOnTheGo(e.target.checked)} />
         </label>
 
         <fieldset className={styles.subs}>

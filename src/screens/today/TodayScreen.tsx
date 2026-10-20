@@ -4,7 +4,7 @@ import { StarBadge } from '../../components/StarBadge';
 import { useStreak } from '../../hooks/useDerived';
 import { useNow } from '../../hooks/useNow';
 import { doneBlocksFor } from '../../lib/doneBlocks';
-import { buildUnits, busyBlocksFor, planDay } from '../../lib/scheduler';
+import { buildUnits, busyBlocksFor, planDay, travelBlocksFor } from '../../lib/scheduler';
 import { addDays, formatDuration, formatLongDate, minutesOfDay, today, tsAt } from '../../lib/time';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
@@ -26,6 +26,8 @@ export function TodayScreen() {
   const events = useStore((s) => s.events);
   const skipped = useStore((s) => s.skipped);
   const settings = useStore((s) => s.settings);
+  const travelOverrides = useStore((s) => s.travel[date]);
+  const pins = useStore((s) => s.pins[date]);
   const activeTimer = useStore((s) => s.activeTimer);
   const openTaskForm = useUI((s) => s.openTaskForm);
   const openPage = useUI((s) => s.openPage);
@@ -43,8 +45,9 @@ export function TodayScreen() {
   const plan = useMemo(() => {
     const fromMin = isToday ? Math.ceil(minutesOfDay(now) / 5) * 5 : 0;
     const units = buildUnits(isToday ? dayTasks : dayTasks.filter((t) => t.date === date), entries, date);
-    return planDay(units, busyBlocksFor(date, weekly, events, skipped), settings, fromMin);
-  }, [dayTasks, entries, date, weekly, events, skipped, settings, isToday, now]);
+    const travel = travelBlocksFor(date, weekly, skipped, travelOverrides, settings);
+    return planDay(units, busyBlocksFor(date, weekly, events, skipped), settings, fromMin, { travel, pins });
+  }, [dayTasks, entries, date, weekly, events, skipped, settings, isToday, now, travelOverrides, pins]);
 
   // Lo hecho se queda en las horas en que se trabajó (aunque la tarea fuera de otro día).
   const doneBlocks = useMemo(() => doneBlocksFor(date, tasks, entries), [date, tasks, entries]);

@@ -18,6 +18,9 @@ const paths = {
   copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
   clock: 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z',
   flame: 'M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z',
+  grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
+  pin: 'M12 16v6M8 3h8l-1 6 3 4H6l3-4z',
+  bus: 'M6 17V6a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v11zM6 11h12M8 17v3M16 17v3M9 14h.01M15 14h.01',
 } as const;
 
 export type IconName = keyof typeof paths | 'play' | 'pause' | 'star';

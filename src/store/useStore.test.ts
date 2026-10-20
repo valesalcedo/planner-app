@@ -125,3 +125,37 @@ describe('tiempo a mano', () => {
     expect(st().entries[0]).toMatchObject({ personal: true, categoryId: 'cat-orga', courseId: undefined });
   });
 });
+
+describe('traslados y tareas fijadas', () => {
+  beforeEach(() => st().resetData());
+
+  it('fija y suelta una tarea en un día', () => {
+    const d = today();
+    st().setPin(d, 'abc', { at: '15:00' });
+    expect(st().pins[d]).toEqual({ abc: { at: '15:00' } });
+    st().setPin(d, 'abc', null);
+    expect(st().pins[d]).toEqual({});
+  });
+
+  it('dar inicio a un traslado lo mueve a ahora, y al llegar guarda lo que duró', () => {
+    const d = today();
+    st().setTravel(d, 'vuelta', { removed: true });
+    st().startTravel(d, 'vuelta');
+    const o = st().travel[d]!.vuelta!;
+    expect(o.removed).toBeUndefined();
+    expect(o.startedAt).toBeGreaterThan(0);
+    expect(o.start).toMatch(/^\d\d:\d\d$/);
+    st().arriveTravel(d, 'vuelta');
+    expect(st().travel[d]!.vuelta!.durationMin).toBe(1);
+    st().setTravel(d, 'vuelta', null);
+    expect(st().travel[d]).toEqual({});
+  });
+
+  it('los datos guardados antes de esta versión se completan con los valores nuevos', () => {
+    const old = { ...st(), travel: undefined, pins: undefined, settings: { ...st().settings, travelMin: undefined } } as never;
+    st().importData(old);
+    expect(st().travel).toEqual({});
+    expect(st().pins).toEqual({});
+    expect(st().settings.travelMin).toBe(60);
+  });
+});

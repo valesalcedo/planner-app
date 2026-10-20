@@ -9,10 +9,27 @@
  *     Si no cabe entero, se agenda un trozo y el resto sigue en el siguiente hueco.
  * Lo que no cabe queda en `overflow` para pasarlo a mañana.
  *
+ * Además:
+ *  - Los traslados (ida y vuelta a la U) cuentan como tiempo ocupado, y en ellos solo
+ *    van tareas marcadas "se puede en el transporte" (primero las más urgentes).
+ *  - Las tareas que arrastraste a mano quedan fijadas donde las dejaste, y el resto
+ *    se reordena alrededor.
+ *
  * Todas las horas son minutos desde la medianoche, así la función es pura y testeable.
  */
-import type { CalendarEvent, Difficulty, ISODate, Settings, Task, TimeEntry, WeeklyBlock } from '../types';
-import { addDays, hhmmToMin, weekdayOf } from './time';
+import type {
+  CalendarEvent,
+  Difficulty,
+  ISODate,
+  Settings,
+  Task,
+  TaskPin,
+  TimeEntry,
+  TravelLeg,
+  TravelOverride,
+  WeeklyBlock,
+} from '../types';
+import { addDays, hhmmToMin, minToHHMM, weekdayOf } from './time';
 
 export interface BusyBlock {
   id: string;
@@ -35,6 +52,22 @@ export interface WorkUnit {
   tier: 0 | 1 | 2;
   /** Orden dentro de la tarea, para respetar la secuencia de subtareas. */
   order: number;
+  /** Se puede hacer en el transporte. */
+  onTheGo: boolean;
+}
+
+export interface TravelBlock {
+  leg: TravelLeg;
+  start: number;
+  end: number;
+  /** Ya le diste inicio. */
+  started: boolean;
+  /** Ya marcaste que llegaste. */
+  arrived: boolean;
+  /** Lo moviste de su hora por defecto. */
+  moved: boolean;
+  /** Ese día lo quitaste (se muestra para poder restaurarlo, pero no ocupa tiempo). */
+  removed: boolean;
 }
 
 export interface Placement {
@@ -42,6 +75,10 @@ export interface Placement {
   start: number;
   end: number;
   partial: boolean;
+  /** Va dentro de este traslado. */
+  travel?: TravelLeg;
+  /** La dejaste fija a mano. */
+  pinned?: boolean;
 }
 
 export interface FreeSlot {
@@ -52,9 +89,19 @@ export interface FreeSlot {
 
 export interface DayPlan {
   busy: BusyBlock[];
+  /** Traslados del día (incluye los quitados, marcados con `removed`). */
+  travel: TravelBlock[];
   slots: FreeSlot[];
   placements: Placement[];
+  /** Tiempo libre que quedó sin tareas (para soltar tareas ahí). */
+  gaps: { start: number; end: number }[];
   overflow: WorkUnit[];
+}
+
+export interface PlanExtras {
+  travel?: TravelBlock[];
+  /** Tareas fijadas: clave de la unidad → dónde. */
+  pins?: Record<string, TaskPin>;
 }
 
 const DIFF_RANK: Record<Difficulty, number> = { facil: 0, media: 1, dificil: 2 };
@@ -88,6 +135,45 @@ export function busyBlocksFor(
     blocks.push({ id: `e-${e.id}`, start, end, title: e.title, kind: 'evento', sourceId: e.id });
   }
   return blocks.filter((b) => b.end > b.start).sort((a, b) => a.start - b.start);
+}
+
+/**
+ * Traslados del día: solo los días con alguna clase (que no se haya marcado "no hubo").
+ * La ida termina cuando empieza la primera clase y la vuelta parte cuando termina la última,
+ * salvo que la hayas movido o le hayas dado inicio.
+ */
+export function travelBlocksFor(
+  date: ISODate,
+  weekly: WeeklyBlock[],
+  skipped: Record<ISODate, string[]>,
+  overrides: Partial<Record<TravelLeg, TravelOverride>> | undefined,
+  settings: Pick<Settings, 'travelEnabled' | 'travelMin'>,
+): TravelBlock[] {
+  if (!settings.travelEnabled || settings.travelMin <= 0) return [];
+  const wd = weekdayOf(date);
+  const skip = new Set(skipped[date] ?? []);
+  const classes = weekly.filter((b) => b.kind === 'clase' && b.weekday === wd && !skip.has(b.id));
+  if (classes.length === 0) return [];
+  const firstStart = Math.min(...classes.map((b) => hhmmToMin(b.start)));
+  const lastEnd = Math.max(...classes.map((b) => hhmmToMin(b.end)));
+  const defaults: Record<TravelLeg, number> = {
+    ida: Math.max(0, firstStart - settings.travelMin),
+    vuelta: lastEnd,
+  };
+  return (['ida', 'vuelta'] as const).map((leg) => {
+    const o = overrides?.[leg] ?? {};
+    const start = o.start ? hhmmToMin(o.start) : defaults[leg];
+    const dur = o.durationMin ?? settings.travelMin;
+    return {
+      leg,
+      start,
+      end: start + Math.max(1, dur),
+      started: !!o.startedAt,
+      arrived: o.durationMin !== undefined && !!o.startedAt,
+      moved: !!o.start,
+      removed: !!o.removed,
+    };
+  });
 }
 
 export function freeSlots(busy: BusyBlock[], dayStart: number, dayEnd: number, from: number): FreeSlot[] {
@@ -158,6 +244,7 @@ export function buildUnits(tasks: Task[], entries: TimeEntry[], date: ISODate): 
           difficulty: t.difficulty,
           tier,
           order: i,
+          onTheGo: !!t.onTheGo,
         });
       });
     } else {
@@ -170,6 +257,7 @@ export function buildUnits(tasks: Task[], entries: TimeEntry[], date: ISODate): 
         difficulty: t.difficulty,
         tier,
         order: 0,
+        onTheGo: !!t.onTheGo,
       });
     }
   }
@@ -193,28 +281,64 @@ const byEase = (a: WorkUnit, b: WorkUnit) =>
   a.remainingMin - b.remainingMin ||
   a.order - b.order;
 
+type Interval = { start: number; end: number };
+
+/** Partes de `base` que no tocan ningún intervalo de `cuts`. */
+function subtract(base: Interval, cuts: Interval[]): Interval[] {
+  let parts: Interval[] = [{ start: base.start, end: base.end }];
+  for (const c of cuts) {
+    parts = parts.flatMap((p) => {
+      if (c.end <= p.start || c.start >= p.end) return [p];
+      const out: Interval[] = [];
+      if (c.start > p.start) out.push({ start: p.start, end: c.start });
+      if (c.end < p.end) out.push({ start: c.end, end: p.end });
+      return out;
+    });
+  }
+  return parts;
+}
+
 export function planDay(
   units: WorkUnit[],
   busy: BusyBlock[],
   settings: Pick<Settings, 'dayStart' | 'dayEnd' | 'bufferMin'>,
   fromMin = 0,
+  extras: PlanExtras = {},
 ): DayPlan {
-  const slots = freeSlots(busy, hhmmToMin(settings.dayStart), hhmmToMin(settings.dayEnd), fromMin);
+  const dayStart = hhmmToMin(settings.dayStart);
+  const dayEnd = hhmmToMin(settings.dayEnd);
+  const allTravel = extras.travel ?? [];
+  const travel = allTravel.filter((t) => !t.removed);
+  const pins = extras.pins ?? {};
   const pool = units.map((u) => ({ ...u }));
   const placements: Placement[] = [];
   // Una subtarea solo puede empezar si las anteriores de la misma tarea ya están agendadas.
   const isNext = (u: WorkUnit) => !pool.some((o) => o.taskId === u.taskId && o.order < u.order && o.remainingMin > 0);
 
-  for (const slot of slots) {
+  const place = (unit: WorkUnit, start: number, dur: number, extra: Partial<Placement> = {}) => {
+    const partial = dur < unit.remainingMin;
+    placements.push({ unit: { ...unit }, start, end: start + dur, partial, ...extra });
+    unit.remainingMin -= dur;
+  };
+
+  /** Llena un tramo con tareas (las mejores primero), partiéndolas si hace falta. */
+  const fill = (
+    slot: Interval,
+    candidates: (u: WorkUnit) => boolean,
+    extra: Partial<Placement>,
+    shortSlot = false,
+    /** Lo que fijaste a mano se respeta aunque haya subtareas anteriores pendientes. */
+    anyOrder = false,
+  ) => {
     let cursor = slot.start;
     while (slot.end - cursor >= MIN_PLACE) {
       const avail = slot.end - cursor;
-      const open = pool.filter((u) => u.remainingMin > 0 && isNext(u));
+      const open = pool.filter((u) => u.remainingMin > 0 && (anyOrder || isNext(u)) && candidates(u));
       if (open.length === 0) break;
 
       let unit: WorkUnit | undefined;
       let dur = 0;
-      if (slot.short) {
+      if (shortSlot) {
         unit = open.filter((u) => u.difficulty !== 'dificil' && u.remainingMin <= avail).sort(byEase)[0];
         dur = unit?.remainingMin ?? 0;
       } else {
@@ -232,14 +356,86 @@ export function planDay(
         }
       }
       if (!unit) break;
-
-      const partial = dur < unit.remainingMin;
-      placements.push({ unit: { ...unit }, start: cursor, end: cursor + dur, partial });
-      unit.remainingMin -= dur;
+      place(unit, cursor, dur, extra);
       cursor += dur + settings.bufferMin;
+    }
+    return cursor;
+  };
+
+  // Parte del traslado que todavía no pasa.
+  const travelLive = travel
+    .map((t) => ({ t, start: Math.max(t.start, fromMin), end: t.end }))
+    .filter((x) => x.end - x.start >= MIN_PLACE);
+
+  // 1. Tareas fijadas a una hora: van donde las dejaste. Si chocan con otra fijada, justo después.
+  //    No se pasan del bloque ocupado (o traslado) siguiente; lo que falte se agenda en otro hueco.
+  const pinnedIntervals: Interval[] = [];
+  const timePins = Object.entries(pins)
+    .flatMap(([key, pin]) => ('at' in pin ? [{ key, at: hhmmToMin(pin.at) }] : []))
+    .filter((p) => p.at >= fromMin)
+    .sort((a, b) => a.at - b.at);
+  const obstacles: Interval[] = [...busy, ...travel].map((b) => ({ start: b.start, end: b.end }));
+  for (const { key, at } of timePins) {
+    const unit = pool.find((u) => u.key === key && u.remainingMin > 0);
+    if (!unit) continue;
+    let start = at;
+    // No encima de una clase ni de otra tarea fijada.
+    for (let moved = true; moved; ) {
+      moved = false;
+      for (const b of [...busy, ...pinnedIntervals.map((p) => ({ ...p, end: p.end + settings.bufferMin }))]) {
+        if (start >= b.start && start < b.end) {
+          start = b.end;
+          moved = true;
+        }
+      }
+    }
+    const inTravel = travelLive.find((x) => start >= x.t.start && start < x.t.end);
+    const limit = inTravel
+      ? inTravel.t.end
+      : Math.min(...obstacles.filter((o) => o.start > start).map((o) => o.start), Math.max(dayEnd, start + unit.remainingMin));
+    const dur = Math.min(unit.remainingMin, limit - start);
+    if (dur < 1) continue;
+    place(unit, start, dur, { pinned: true, travel: inTravel?.t.leg });
+    pinnedIntervals.push({ start, end: start + dur });
+  }
+
+  // 2. Traslados: primero lo que arrastraste ahí, después lo marcado para el transporte.
+  for (const { t, start, end } of travelLive) {
+    const free = subtract({ start, end }, pinnedIntervals);
+    const pinnedHere = Object.entries(pins)
+      .filter(([, pin]) => 'travel' in pin && pin.travel === t.leg)
+      .map(([key]) => key);
+    for (const part of free) {
+      const cursor = fill(part, (u) => pinnedHere.includes(u.key), { travel: t.leg, pinned: true }, false, true);
+      fill({ start: cursor, end: part.end }, (u) => u.onTheGo, { travel: t.leg });
     }
   }
 
+  // 3. El resto del día, con los traslados y lo fijado como ocupado.
+  const blocking: BusyBlock[] = [
+    ...busy,
+    ...travel.map((t) => ({ id: `t-${t.leg}`, start: t.start, end: t.end, title: '', kind: 'actividad' as const, sourceId: t.leg })),
+    ...pinnedIntervals.map((p, i) => ({ id: `p-${i}`, start: p.start, end: p.end + settings.bufferMin, title: '', kind: 'actividad' as const, sourceId: '' })),
+  ];
+  const slots = freeSlots(blocking, dayStart, dayEnd, fromMin);
+  for (const slot of slots) fill(slot, () => true, {}, slot.short);
+
+  placements.sort((a, b) => a.start - b.start);
+
+  const gaps = slots
+    .flatMap((slot) =>
+      subtract(
+        slot,
+        placements.map((p) => ({ start: p.start, end: p.end + settings.bufferMin })),
+      ),
+    )
+    .filter((g) => g.end - g.start >= 15);
+
   const overflow = pool.filter((u) => u.remainingMin > 0);
-  return { busy, slots, placements, overflow };
+  return { busy, travel: allTravel, slots, placements, gaps, overflow };
 }
+
+/** Clave con que se fija una unidad de trabajo. */
+export const unitKey = (taskId: string, subtaskId?: string) => (subtaskId ? `${taskId}:${subtaskId}` : taskId);
+
+export const pinAt = (min: number): TaskPin => ({ at: minToHHMM(min) });

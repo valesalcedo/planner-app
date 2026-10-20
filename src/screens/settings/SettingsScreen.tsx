@@ -209,6 +209,25 @@ export function SettingsScreen() {
         </div>
       </section>
 
+      <section className="card card--lg stack" aria-labelledby="travel-title">
+        <h2 id="travel-title" className="section-title">
+          Traslados
+        </h2>
+        <label className="switch-row">
+          <span className="stack" style={{ gap: 0 }}>
+            <span style={{ fontWeight: 800, fontSize: 14 }}>Ida y vuelta a la U</span>
+            <span className="small muted">Los días con clases se cuentan como tiempo ocupado. Puedes moverlos o darles inicio al salir.</span>
+          </span>
+          <input type="checkbox" role="switch" className="switch" checked={settings.travelEnabled} onChange={(e) => updateSettings({ travelEnabled: e.target.checked })} />
+        </label>
+        {settings.travelEnabled && (
+          <div className="field">
+            <label htmlFor="st-travel">Me demoro en cada viaje (min)</label>
+            <input id="st-travel" type="number" min={5} max={240} inputMode="numeric" className="input" value={settings.travelMin} onChange={(e) => updateSettings({ travelMin: Math.max(5, Math.min(240, Number(e.target.value) || 0)) })} />
+          </div>
+        )}
+      </section>
+
       <section className="card card--lg stack" aria-labelledby="stars-title">
         <h2 id="stars-title" className="section-title">
           Estrellas

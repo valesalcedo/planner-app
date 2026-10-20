@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Task, WeeklyBlock } from '../types';
-import { buildUnits, busyBlocksFor, freeSlots, planDay } from './scheduler';
+import { buildUnits, busyBlocksFor, freeSlots, planDay, travelBlocksFor } from './scheduler';
 
 const DAY = '2026-10-15'; // jueves
 const settings = { dayStart: '08:00', dayEnd: '20:00', bufferMin: 5 };
@@ -92,5 +92,94 @@ describe('planDay', () => {
     const tasks = [task({ id: 'a', title: 'A' })];
     const plan = planDay(buildUnits(tasks, [], DAY), [], settings, 15 * 60);
     expect(plan.placements[0].start).toBe(900);
+  });
+});
+
+describe('traslados', () => {
+  const travelSettings = { travelEnabled: true, travelMin: 60 };
+
+  it('la ida termina al empezar la primera clase y la vuelta parte al terminar la última', () => {
+    const t = travelBlocksFor(DAY, classes, {}, undefined, travelSettings);
+    expect(t.map((x) => [x.leg, x.start, x.end])).toEqual([
+      ['ida', 440, 500],
+      ['vuelta', 690, 750],
+    ]);
+  });
+
+  it('no hay traslados si no hay clases ese día o si están todas suspendidas', () => {
+    expect(travelBlocksFor('2026-10-17', classes, {}, undefined, travelSettings)).toEqual([]);
+    expect(travelBlocksFor(DAY, classes, { [DAY]: ['c1', 'c2'] }, undefined, travelSettings)).toEqual([]);
+  });
+
+  it('respeta la hora a la que lo moviste y lo que realmente duró', () => {
+    const t = travelBlocksFor(DAY, classes, {}, { vuelta: { start: '18:00', durationMin: 75, startedAt: 1 } }, travelSettings);
+    const vuelta = t.find((x) => x.leg === 'vuelta')!;
+    expect([vuelta.start, vuelta.end, vuelta.moved, vuelta.arrived]).toEqual([1080, 1155, true, true]);
+  });
+
+  it('cuenta como ocupado y solo recibe tareas marcadas para el transporte', () => {
+    const tasks = [
+      task({ id: 'leer', title: 'Lectura', estimateMin: 40, onTheGo: true }),
+      task({ id: 'pc', title: 'Programar', estimateMin: 60, difficulty: 'dificil' }),
+    ];
+    const travel = travelBlocksFor(DAY, classes, {}, undefined, travelSettings);
+    const plan = planDay(buildUnits(tasks, [], DAY), busyBlocksFor(DAY, classes, [], {}), settings, 0, { travel });
+    const leer = plan.placements.find((p) => p.unit.taskId === 'leer')!;
+    const pc = plan.placements.find((p) => p.unit.taskId === 'pc')!;
+    expect(leer.travel).toBe('ida');
+    expect(leer.start).toBe(440);
+    expect(pc.travel).toBeUndefined();
+    // Programar no se agenda durante la vuelta (11:30–12:30).
+    expect(pc.start).toBeGreaterThanOrEqual(750);
+  });
+
+  it('un traslado quitado no ocupa tiempo', () => {
+    const travel = travelBlocksFor(DAY, classes, {}, { vuelta: { removed: true } }, travelSettings);
+    const tasks = [task({ id: 'pc', title: 'Programar', estimateMin: 60 })];
+    const plan = planDay(buildUnits(tasks, [], DAY), busyBlocksFor(DAY, classes, [], {}), settings, 0, { travel });
+    expect(plan.placements[0].start).toBe(690);
+  });
+});
+
+describe('tareas fijadas', () => {
+  it('quedan a la hora donde las dejaste y el resto se ordena alrededor', () => {
+    const tasks = [
+      task({ id: 'a', title: 'Urgente', estimateMin: 60, deadline: DAY }),
+      task({ id: 'b', title: 'Fijada', estimateMin: 60 }),
+    ];
+    const plan = planDay(buildUnits(tasks, [], DAY), busyBlocksFor(DAY, classes, [], {}), settings, 0, {
+      pins: { b: { at: '12:00' } },
+    });
+    const b = plan.placements.find((p) => p.unit.taskId === 'b')!;
+    const a = plan.placements.find((p) => p.unit.taskId === 'a')!;
+    expect([b.start, b.end, b.pinned]).toEqual([720, 780, true]);
+    expect(a.start).toBe(785); // 11:30–12:00 no le alcanza entera, así que va después de la fijada
+  });
+
+  it('una tarea arrastrada a un traslado va ahí aunque no esté marcada', () => {
+    const tasks = [task({ id: 'x', title: 'Resumen', estimateMin: 30 })];
+    const travel = travelBlocksFor(DAY, classes, {}, undefined, { travelEnabled: true, travelMin: 60 });
+    const plan = planDay(buildUnits(tasks, [], DAY), busyBlocksFor(DAY, classes, [], {}), settings, 0, {
+      travel,
+      pins: { x: { travel: 'vuelta' } },
+    });
+    expect(plan.placements.map((p) => [p.start, p.travel, p.pinned])).toEqual([[690, 'vuelta', true]]);
+  });
+
+  it('una fijada encima de una clase se corre a cuando termina', () => {
+    const tasks = [task({ id: 'x', title: 'Resumen', estimateMin: 30 })];
+    const plan = planDay(buildUnits(tasks, [], DAY), busyBlocksFor(DAY, classes, [], {}), settings, 0, {
+      pins: { x: { at: '09:00' } },
+    });
+    expect(plan.placements[0].start).toBe(590);
+  });
+
+  it('muestra los huecos libres que quedan', () => {
+    const plan = planDay([], busyBlocksFor(DAY, classes, [], {}), settings);
+    expect(plan.gaps).toEqual([
+      { start: 480, end: 500 },
+      { start: 590, end: 620 },
+      { start: 690, end: 1200 },
+    ]);
   });
 });

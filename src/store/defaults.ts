@@ -9,6 +9,8 @@ export const DEFAULT_SETTINGS: Settings = {
   streakDays: 3,
   streakMultiplier: 1.2,
   starsPerClass: 5,
+  travelEnabled: true,
+  travelMin: 60,
   theme: { id: 'original' },
 };
 
@@ -43,6 +45,8 @@ export function initialData(): AppData {
     skipped: {},
     attendance: {},
     events: [],
+    travel: {},
+    pins: {},
     rewards: [
       { id: 'r-pelicula', name: 'Ver una película', price: 180 },
       { id: 'r-rico', name: 'Comprarme algo rico', price: 90 },
