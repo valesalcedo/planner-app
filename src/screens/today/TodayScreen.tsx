@@ -3,6 +3,7 @@ import { Icon } from '../../components/Icon';
 import { StarBadge } from '../../components/StarBadge';
 import { useStreak } from '../../hooks/useDerived';
 import { useNow } from '../../hooks/useNow';
+import { doneBlocksFor } from '../../lib/doneBlocks';
 import { buildUnits, busyBlocksFor, planDay } from '../../lib/scheduler';
 import { addDays, formatDuration, formatLongDate, minutesOfDay, today, tsAt } from '../../lib/time';
 import { useStore } from '../../store/useStore';
@@ -44,6 +45,13 @@ export function TodayScreen() {
     const units = buildUnits(isToday ? dayTasks : dayTasks.filter((t) => t.date === date), entries, date);
     return planDay(units, busyBlocksFor(date, weekly, events, skipped), settings, fromMin);
   }, [dayTasks, entries, date, weekly, events, skipped, settings, isToday, now]);
+
+  // Lo hecho se queda en las horas en que se trabajó (aunque la tarea fuera de otro día).
+  const doneBlocks = useMemo(() => doneBlocksFor(date, tasks, entries), [date, tasks, entries]);
+  const doneWithoutTime = useMemo(() => {
+    const shown = new Set(doneBlocks.map((b) => b.taskId));
+    return dayTasks.filter((t) => t.done && !shown.has(t.id));
+  }, [dayTasks, doneBlocks]);
 
   const dayStart = tsAt(date, 0);
   const dayEnd = tsAt(addDays(date, 1), 0);
@@ -114,7 +122,7 @@ export function TodayScreen() {
       </div>
 
       {view === 'dia' ? (
-        <DayTimeline date={date} plan={plan} doneTasks={dayTasks.filter((t) => t.done)} />
+        <DayTimeline date={date} plan={plan} doneBlocks={doneBlocks} doneTasks={doneWithoutTime} />
       ) : (
         <TaskList tasks={dayTasks} date={date} />
       )}

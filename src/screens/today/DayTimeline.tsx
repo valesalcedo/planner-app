@@ -2,6 +2,7 @@ import { Icon } from '../../components/Icon';
 import { useLookups } from '../../hooks/useDerived';
 import { useNow } from '../../hooks/useNow';
 import { inkOn } from '../../lib/color';
+import type { DoneBlock } from '../../lib/doneBlocks';
 import type { DayPlan, Placement } from '../../lib/scheduler';
 import { addDays, formatDuration, hhmmToMin, minToHHMM, tsAt, weekdayOf } from '../../lib/time';
 import { useStore } from '../../store/useStore';
@@ -12,17 +13,22 @@ import styles from './Today.module.css';
 interface Props {
   date: ISODate;
   plan: DayPlan;
+  /** Trabajo terminado, en las horas en que se hizo. */
+  doneBlocks: DoneBlock[];
+  /** Tareas hechas sin tiempo registrado ese día (no tienen hora donde quedarse). */
   doneTasks: Task[];
 }
 
 type Row =
   | { type: 'busy'; start: number; end: number; title: string; kind: string; sourceId: string; skipped: boolean }
-  | { type: 'work'; start: number; end: number; placement: Placement };
+  | { type: 'work'; start: number; end: number; placement: Placement }
+  | { type: 'done'; start: number; end: number; block: DoneBlock };
 
+const ORDER = { busy: 0, done: 1, work: 2 } as const;
 const DIFF_LABEL = { facil: 'Fácil', media: 'Media', dificil: 'Difícil' } as const;
 const DIFF_CHIP = { facil: 'chip--mint', media: 'chip--lavender', dificil: 'chip--accent' } as const;
 
-export function DayTimeline({ date, plan, doneTasks }: Props) {
+export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
   const tasks = useStore((s) => s.tasks);
   const weekly = useStore((s) => s.weekly);
   const events = useStore((s) => s.events);
@@ -69,7 +75,15 @@ export function DayTimeline({ date, plan, doneTasks }: Props) {
       skipped: true,
     })),
     ...plan.placements.map((p) => ({ type: 'work' as const, start: p.start, end: p.end, placement: p })),
-  ].sort((a, b) => a.start - b.start || (a.type === 'busy' ? -1 : 1));
+    ...doneBlocks.map((b) => ({ type: 'done' as const, start: b.start, end: b.end, block: b })),
+  ].sort((a, b) => a.start - b.start || ORDER[a.type] - ORDER[b.type]);
+
+  const undo = (b: DoneBlock) => {
+    if (b.subtaskId) setSubtaskDone(b.taskId, b.subtaskId, false);
+    else setTaskDone(b.taskId, false);
+  };
+  const rowKey = (row: Row) =>
+    row.type === 'busy' ? `b-${row.sourceId}` : row.type === 'work' ? `w-${row.placement.unit.key}-${row.start}` : `d-${row.block.key}-${row.start}`;
 
   const start = (p: Placement) => {
     startTimer(p.unit.taskId, p.unit.subtaskId);
@@ -108,7 +122,7 @@ export function DayTimeline({ date, plan, doneTasks }: Props) {
       ) : (
         <ol className={styles.timeline}>
           {rows.map((row) => (
-            <li key={row.type === 'busy' ? `b-${row.sourceId}` : `w-${row.placement.unit.key}-${row.start}`} className={styles.timelineRow}>
+            <li key={rowKey(row)} className={styles.timelineRow}>
               <span className={styles.time}>{minToHHMM(row.start)}</span>
               {row.type === 'busy' ? (
                 <BusyCard
@@ -132,6 +146,12 @@ export function DayTimeline({ date, plan, doneTasks }: Props) {
                         }
                       : undefined
                   }
+                />
+              ) : row.type === 'done' ? (
+                <DoneCard
+                  block={row.block}
+                  courseName={groupName(taskById.get(row.block.taskId))}
+                  onUndo={() => undo(row.block)}
                 />
               ) : (
                 <WorkCard
@@ -190,7 +210,7 @@ export function DayTimeline({ date, plan, doneTasks }: Props) {
       {doneTasks.length > 0 && (
         <details className="card">
           <summary className="section-title" style={{ cursor: 'pointer', minHeight: 28 }}>
-            Hechas ({doneTasks.length})
+            Hechas sin hora registrada ({doneTasks.length})
           </summary>
           <ul className={styles.doneList}>
             {doneTasks.map((t) => (
@@ -329,6 +349,34 @@ function WorkCard({ placement, task, date, courseName, short, running, onStart, 
             {running ? 'En curso' : 'Empezar'}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+interface DoneCardProps {
+  block: DoneBlock;
+  courseName?: string;
+  onUndo: () => void;
+}
+
+/** Trabajo terminado: se queda en su hora, tachado y apagado. */
+function DoneCard({ block, courseName, onUndo }: DoneCardProps) {
+  const openTaskForm = useUI((s) => s.openTaskForm);
+  return (
+    <div className={`${styles.work} ${styles.done}`}>
+      <div className="row" style={{ alignItems: 'flex-start' }}>
+        <span className="check-hit">
+          <input type="checkbox" className="checkbox" aria-label={`Desmarcar "${block.title}"`} checked onChange={onUndo} />
+        </span>
+        <button type="button" className={styles.workMain} onClick={() => openTaskForm({ taskId: block.taskId })}>
+          <span className={styles.workTitle}>{block.title}</span>
+          <span className="small muted">
+            Hecha · {minToHHMM(block.start)}–{minToHHMM(block.end)} · {formatDuration(block.end - block.start)}
+            {block.subtaskId ? ` · ${block.taskTitle}` : ''}
+            {courseName && ` · ${courseName}`}
+          </span>
+        </button>
       </div>
     </div>
   );

@@ -110,6 +110,17 @@
   box-shadow: var(--shadow-soft);
 }
 
+.done {
+  opacity: 0.55;
+  box-shadow: none;
+  background: transparent;
+  border: 2px dashed var(--ink-3);
+}
+
+.done .workTitle {
+  text-decoration: line-through;
+}
+
 .urgent {
   box-shadow: 0 0 0 2px var(--primary);
 }
