@@ -53,14 +53,29 @@ describe('planDay', () => {
     const first = (id: string) => plan.placements.find((p) => p.unit.taskId === id)!;
     expect(first('mail').start).toBe(480); // primer hueco corto
     expect(first('hoy').start).toBe(690); // apenas termina Algoritmos
-    expect(first('flex').start).toBeGreaterThan(first('hoy').end);
+    // Leer apunte no cabe entera entre clases: un trozo ahí y el resto después del Informe.
+    const flex = plan.placements.filter((p) => p.unit.taskId === 'flex');
+    expect(flex[0]).toMatchObject({ start: 590, end: 620, partial: true });
+    expect(flex[1].start).toBeGreaterThan(first('hoy').end);
     expect(plan.overflow).toHaveLength(0);
   });
 
-  it('nunca agenda tareas difíciles en huecos cortos', () => {
-    const tasks = [task({ id: 'd', title: 'Difícil', estimateMin: 20, difficulty: 'dificil', mustToday: true })];
+  it('en huecos cortos prefiere lo que no es difícil', () => {
+    const tasks = [
+      task({ id: 'd', title: 'Difícil', estimateMin: 20, difficulty: 'dificil', mustToday: true }),
+      task({ id: 'm', title: 'Media', estimateMin: 20, difficulty: 'media' }),
+    ];
     const plan = planDay(buildUnits(tasks, [], DAY), busyBlocksFor(DAY, classes, [], {}), settings);
-    expect(plan.placements[0].start).toBe(690);
+    expect(plan.placements.find((p) => p.unit.taskId === 'm')!.start).toBe(480);
+    expect(plan.placements.find((p) => p.unit.taskId === 'd')!.start).toBeGreaterThan(480);
+  });
+
+  it('si nada cabe entero en un hueco corto, agenda un trozo en vez de dejarlo libre', () => {
+    const tasks = [task({ id: 'big', title: 'Control', estimateMin: 120, difficulty: 'media' })];
+    const plan = planDay(buildUnits(tasks, [], DAY), busyBlocksFor(DAY, classes, [], {}), settings);
+    expect(plan.placements[0]).toMatchObject({ start: 480, end: 500, partial: true });
+    expect(plan.placements[1]).toMatchObject({ start: 590, end: 620, partial: true });
+    expect(plan.overflow).toHaveLength(0);
   });
 
   it('divide una tarea larga y deja en overflow lo que no cabe', () => {
@@ -130,14 +145,16 @@ describe('traslados', () => {
     expect(leer.start).toBe(440);
     expect(pc.travel).toBeUndefined();
     // Programar no se agenda durante la vuelta (11:30–12:30).
-    expect(pc.start).toBeGreaterThanOrEqual(750);
+    const pcs = plan.placements.filter((p) => p.unit.taskId === 'pc');
+    expect(pcs.every((p) => p.end <= 690 || p.start >= 750)).toBe(true);
   });
 
   it('un traslado quitado no ocupa tiempo', () => {
     const travel = travelBlocksFor(DAY, classes, {}, { vuelta: { removed: true } }, travelSettings);
     const tasks = [task({ id: 'pc', title: 'Programar', estimateMin: 60 })];
     const plan = planDay(buildUnits(tasks, [], DAY), busyBlocksFor(DAY, classes, [], {}), settings, 0, { travel });
-    expect(plan.placements[0].start).toBe(690);
+    // Justo después de la última clase (donde estaba la vuelta) hay tarea.
+    expect(plan.placements.some((p) => p.start === 690)).toBe(true);
   });
 });
 
@@ -151,9 +168,11 @@ describe('tareas fijadas', () => {
       pins: { b: { at: '12:00' } },
     });
     const b = plan.placements.find((p) => p.unit.taskId === 'b')!;
-    const a = plan.placements.find((p) => p.unit.taskId === 'a')!;
+    const as = plan.placements.filter((p) => p.unit.taskId === 'a');
     expect([b.start, b.end, b.pinned]).toEqual([720, 780, true]);
-    expect(a.start).toBe(785); // 11:30–12:00 no le alcanza entera, así que va después de la fijada
+    // La otra se reparte alrededor, sin pisar la fijada.
+    expect(as.every((p) => p.end <= 720 || p.start >= 780)).toBe(true);
+    expect(plan.overflow).toHaveLength(0);
   });
 
   it('una tarea arrastrada a un traslado va ahí aunque no esté marcada', () => {

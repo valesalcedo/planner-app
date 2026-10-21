@@ -4,7 +4,9 @@
  * Toma los bloques ocupados (clases, actividades, eventos con hora) y reparte las
  * tareas pendientes en los huecos libres según tres reglas:
  *  1. Lo que vence hoy o está marcado "sí o sí hoy" va primero (tier 0).
- *  2. En huecos cortos o entre clases van tareas fáciles y breves; nunca las difíciles.
+ *  2. En huecos cortos o entre clases van tareas fáciles y breves. Si ninguna cabe entera,
+ *     se agenda un trozo de lo más urgente (las difíciles solo si no queda otra cosa),
+ *     para no dejar huecos vacíos.
  *  3. En huecos largos va lo más urgente y, a igual urgencia, lo más difícil.
  *     Si no cabe entero, se agenda un trozo y el resto sigue en el siguiente hueco.
  * Lo que no cabe queda en `overflow` para pasarlo a mañana.
@@ -107,6 +109,8 @@ export interface PlanExtras {
 const DIFF_RANK: Record<Difficulty, number> = { facil: 0, media: 1, dificil: 2 };
 const MIN_CHUNK = 25;
 const MIN_PLACE = 10;
+/** Trozo mínimo para aprovechar un hueco donde nada cabe entero. */
+const MIN_FILL = 15;
 const SHORT_SLOT = 60;
 const BETWEEN_CLASSES_MAX = 90;
 
@@ -339,8 +343,16 @@ export function planDay(
       let unit: WorkUnit | undefined;
       let dur = 0;
       if (shortSlot) {
+        // Lo ideal: algo fácil o medio que quepa entero.
         unit = open.filter((u) => u.difficulty !== 'dificil' && u.remainingMin <= avail).sort(byEase)[0];
         dur = unit?.remainingMin ?? 0;
+        // Si nada cabe entero, igual se aprovecha el hueco con un trozo de lo más urgente
+        // (primero lo que no es difícil).
+        if (!unit && avail >= MIN_FILL) {
+          const easy = open.filter((u) => u.difficulty !== 'dificil').sort(byUrgency);
+          unit = (easy.length > 0 ? easy : [...open].sort(byUrgency))[0];
+          dur = Math.min(unit.remainingMin, avail);
+        }
       } else {
         const sorted = [...open].sort(byUrgency);
         const top = sorted[0];
@@ -353,6 +365,11 @@ export function planDay(
         } else {
           unit = sorted.find((u) => u.remainingMin <= avail);
           dur = unit?.remainingMin ?? 0;
+          // Nada cabe entero en lo que queda: un trozo de lo más urgente.
+          if (!unit && avail >= MIN_FILL) {
+            unit = top;
+            dur = avail;
+          }
         }
       }
       if (!unit) break;
