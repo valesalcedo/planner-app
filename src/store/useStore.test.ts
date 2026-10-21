@@ -147,6 +147,12 @@ describe('traslados y tareas fijadas', () => {
     expect(o.start).toMatch(/^\d\d:\d\d$/);
     st().arriveTravel(d, 'vuelta');
     expect(st().travel[d]!.vuelta!.durationMin).toBe(1);
+    st().undoArriveTravel(d, 'vuelta');
+    expect(st().travel[d]!.vuelta!.durationMin).toBeUndefined();
+    expect(st().travel[d]!.vuelta!.startedAt).toBeGreaterThan(0);
+    st().undoStartTravel(d, 'vuelta');
+    expect(st().travel[d]!.vuelta!.startedAt).toBeUndefined();
+    expect(st().travel[d]!.vuelta!.start).toBeUndefined();
     st().setTravel(d, 'vuelta', null);
     expect(st().travel[d]).toEqual({});
   });

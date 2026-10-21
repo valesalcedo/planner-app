@@ -58,6 +58,8 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
   const setTravel = useStore((s) => s.setTravel);
   const startTravel = useStore((s) => s.startTravel);
   const arriveTravel = useStore((s) => s.arriveTravel);
+  const undoArriveTravel = useStore((s) => s.undoArriveTravel);
+  const undoStartTravel = useStore((s) => s.undoStartTravel);
   const [moving, setMoving] = useState<MoveState | null>(null);
   const setTab = useUI((s) => s.setTab);
   const showToast = useUI((s) => s.showToast);
@@ -147,11 +149,9 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
         courseName={groupName(taskById.get(p.unit.taskId))}
         short={!inTravel && (plan.slots.find((s) => p.start >= s.start && p.end <= s.end)?.short ?? false)}
         running={activeTimer?.taskId === p.unit.taskId && activeTimer.subtaskId === p.unit.subtaskId}
-        pinned={!!pins?.[key]}
         dragging={drag?.payload.kind === 'unit' && drag.payload.key === key}
         dropMin={inTravel ? undefined : p.start}
         handle={handleProps({ kind: 'unit', key, title: p.unit.title })}
-        onUnpin={() => pinUnit(key, null)}
         onStart={() => start(p)}
         onComplete={() => complete(p)}
       />
@@ -246,6 +246,14 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
                     showToast('¡Buen viaje! Reordené tu día desde ahora');
                   }}
                   onArrive={() => arriveTravel(date, row.block.leg)}
+                  onUndoArrive={() => {
+                    undoArriveTravel(date, row.block.leg);
+                    showToast('Listo: sigues en camino');
+                  }}
+                  onUndoStart={() => {
+                    undoStartTravel(date, row.block.leg);
+                    showToast(`${TRAVEL_TITLE[row.block.leg]} vuelve a su hora de siempre`);
+                  }}
                 >
                   {plan.placements.filter((p) => p.travel === row.block.leg).map((p) => workCard(p, true))}
                 </TravelCard>
@@ -441,17 +449,15 @@ interface WorkCardProps {
   courseName?: string;
   short: boolean;
   running: boolean;
-  pinned: boolean;
   dragging: boolean;
   /** Hora con que se puede soltar otra tarea encima (no aplica dentro de un traslado). */
   dropMin?: number;
   handle: ReturnType<ReturnType<typeof useDragDrop>['handleProps']>;
-  onUnpin: () => void;
   onStart: () => void;
   onComplete: () => void;
 }
 
-function WorkCard({ placement, task, date, courseName, short, running, pinned, dragging, dropMin, handle, onUnpin, onStart, onComplete }: WorkCardProps) {
+function WorkCard({ placement, task, date, courseName, short, running, dragging, dropMin, handle, onStart, onComplete }: WorkCardProps) {
   const { unit } = placement;
   const openTaskForm = useUI((s) => s.openTaskForm);
   const openTimeLog = useUI((s) => s.openTimeLog);
@@ -491,11 +497,6 @@ function WorkCard({ placement, task, date, courseName, short, running, pinned, d
       </div>
       <div className="row row--between">
         <div className="pills" style={{ gap: 6 }}>
-          {pinned && (
-            <button type="button" className={`chip chip--lavender ${styles.pinChip}`} onClick={onUnpin} aria-label={`Soltar "${unit.title}"`}>
-              <Icon name="pin" size={13} strokeWidth={2.4} /> Fijada ×
-            </button>
-          )}
           {urgentLabel && <span className="chip chip--main">{urgentLabel}</span>}
           <span className={`chip ${DIFF_CHIP[task.difficulty]}`}>{DIFF_LABEL[task.difficulty]}</span>
         </div>
@@ -554,11 +555,13 @@ interface TravelCardProps {
   handle: ReturnType<ReturnType<typeof useDragDrop>['handleProps']>;
   onStart: () => void;
   onArrive: () => void;
+  onUndoArrive: () => void;
+  onUndoStart: () => void;
   children: React.ReactNode;
 }
 
 /** Traslado casa ↔ U: tiempo ocupado donde solo van tareas para el transporte. */
-function TravelCard({ block, isToday, now, dragging, handle, onStart, onArrive, children }: TravelCardProps) {
+function TravelCard({ block, isToday, now, dragging, handle, onStart, onArrive, onUndoArrive, onUndoStart, children }: TravelCardProps) {
   const title = TRAVEL_TITLE[block.leg];
   const range = `${minToHHMM(block.start)}–${minToHHMM(block.end)}`;
   const nowMin = minutesOfDay(now);
@@ -599,8 +602,18 @@ function TravelCard({ block, isToday, now, dragging, handle, onStart, onArrive, 
         </button>
       )}
       {isToday && block.started && !block.arrived && (
-        <button type="button" className={`btn btn--sm ${styles.blockBtn}`} style={{ alignSelf: 'flex-start' }} onClick={onArrive}>
-          <Icon name="check" size={14} strokeWidth={3} /> Llegué
+        <div className="row" style={{ gap: 8 }}>
+          <button type="button" className={`btn btn--sm ${styles.blockBtn}`} onClick={onArrive}>
+            <Icon name="check" size={14} strokeWidth={3} /> Llegué
+          </button>
+          <button type="button" className={`btn btn--sm ${styles.blockBtn}`} onClick={onUndoStart}>
+            Aún no salgo
+          </button>
+        </div>
+      )}
+      {block.arrived && (
+        <button type="button" className={`btn btn--sm ${styles.blockBtn}`} style={{ alignSelf: 'flex-start' }} onClick={onUndoArrive}>
+          Aún no llego
         </button>
       )}
       {hasTasks ? (

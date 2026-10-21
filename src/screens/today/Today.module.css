@@ -276,16 +276,6 @@
   opacity: 0.4;
 }
 
-.pinChip {
-  border: none;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  cursor: pointer;
-}
 
 .gap {
   border: 2px dashed color-mix(in srgb, var(--ink-3) 35%, transparent);

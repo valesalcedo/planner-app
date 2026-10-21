@@ -95,6 +95,10 @@ interface Actions {
   startTravel: (date: ISODate, leg: TravelLeg) => void;
   /** Llegaste: el traslado dura lo que de verdad duró. */
   arriveTravel: (date: ISODate, leg: TravelLeg) => void;
+  /** Deshacer "Llegué": vuelve a estar en camino. */
+  undoArriveTravel: (date: ISODate, leg: TravelLeg) => void;
+  /** Deshacer "Salgo ahora": el traslado vuelve a su hora de siempre. */
+  undoStartTravel: (date: ISODate, leg: TravelLeg) => void;
 
   saveEvent: (e: CalendarEvent | Draft<CalendarEvent>) => void;
   deleteEvent: (id: string) => void;
@@ -317,6 +321,11 @@ export const useStore = create<Store>()(
           if (!o?.startedAt) return;
           get().setTravel(date, leg, { durationMin: Math.max(1, Math.round((Date.now() - o.startedAt) / 60000)) });
         },
+
+        undoArriveTravel: (date, leg) => get().setTravel(date, leg, { durationMin: undefined }),
+
+        undoStartTravel: (date, leg) =>
+          get().setTravel(date, leg, { start: undefined, startedAt: undefined, durationMin: undefined }),
 
         saveEvent: (e) => set((s) => ({ events: upsert(s.events, e) })),
         deleteEvent: (id) => set((s) => ({ events: s.events.filter((e) => e.id !== id) })),
