@@ -86,13 +86,16 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
     .sort((a, b) => hhmmToMin(a.start) - hhmmToMin(b.start));
   const removedTravel = plan.travel.filter((t) => t.removed);
   const travelLegs = plan.travel.filter((t) => !t.removed);
+  // Lo que terminaste mientras ibas en un traslado se queda adentro de su tarjeta.
+  const travelLegOf = (b: DoneBlock) => travelLegs.find((t) => b.start >= t.start && b.start < t.end)?.leg;
+  const doneInTravel = (leg: TravelBlock['leg']) => doneBlocks.filter((b) => travelLegOf(b) === leg);
   const rows: Row[] = [
     ...plan.busy.map((b) => ({ type: 'busy' as const, start: b.start, end: b.end, title: b.title, kind: b.kind, sourceId: b.sourceId })),
     ...travelLegs.map((b) => ({ type: 'travel' as const, start: b.start, end: b.end, block: b })),
     // Lo que va dentro de un traslado se muestra adentro de su tarjeta.
     ...plan.placements.filter((p) => !p.travel).map((p) => ({ type: 'work' as const, start: p.start, end: p.end, placement: p })),
     ...(isPast ? [] : plan.gaps.map((g) => ({ type: 'gap' as const, start: g.start, end: g.end }))),
-    ...doneBlocks.map((b) => ({ type: 'done' as const, start: b.start, end: b.end, block: b })),
+    ...doneBlocks.filter((b) => !travelLegOf(b)).map((b) => ({ type: 'done' as const, start: b.start, end: b.end, block: b })),
   ].sort((a, b) => a.start - b.start || ORDER[a.type] - ORDER[b.type]);
 
   const skipClass = (id: string, title: string) => {
@@ -235,7 +238,24 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
                   dragging={drag?.payload.kind === 'travel' && drag.payload.leg === row.block.leg}
                   handle={handleProps({ kind: 'travel', leg: row.block.leg, title: TRAVEL_TITLE[row.block.leg] })}
                 >
-                  {plan.placements.filter((p) => p.travel === row.block.leg).map((p) => workCard(p, true))}
+                  {[
+                    ...doneInTravel(row.block.leg).map((b) => ({
+                      start: b.start,
+                      node: (
+                        <DoneCard
+                          key={`done-${b.key}-${b.start}`}
+                          block={b}
+                          courseName={groupName(taskById.get(b.taskId))}
+                          onUndo={() => undo(b)}
+                        />
+                      ),
+                    })),
+                    ...plan.placements
+                      .filter((p) => p.travel === row.block.leg)
+                      .map((p) => ({ start: p.start, node: workCard(p, true) })),
+                  ]
+                    .sort((a, b) => a.start - b.start)
+                    .map((x) => x.node)}
                 </TravelCard>
               ) : row.type === 'gap' ? (
                 <div className={styles.gap} data-drop="time" data-min={row.start}>
