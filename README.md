@@ -87,5 +87,5 @@ Los colores del tema original están en `src/styles/tokens.css`. Los demás tema
 3. En los huecos largos va primero lo urgente (vence hoy o "sí o sí"), luego lo que vence mañana, y a igual urgencia lo más difícil. Si una tarea no cabe entera, se agenda un trozo de al menos 25 min.
 4. Las subtareas se agendan en orden y el tiempo que ya cronometraste se descuenta del estimado.
 5. Lo que no cabe aparece en "No alcanza hoy".
-6. Los días con clases agrega dos traslados (ida y vuelta, 1 h cada uno, ajustable en Ajustes). Cuentan como tiempo ocupado y solo reciben tareas marcadas "Se puede en el transporte". Puedes moverlos, quitarlos ese día o darles inicio con "Salgo ahora".
+6. Los días con clases agrega dos traslados (ida y vuelta, 1 h cada uno, ajustable en Ajustes). Cuentan como tiempo ocupado y solo reciben tareas marcadas "Se puede en el transporte". Puedes moverlos o quitarlos ese día.
 7. Las tareas que arrastras (desde el ícono de puntitos) quedan fijadas en esa hora o traslado, y el resto se reordena alrededor. Tocar los puntitos abre "Mover" para elegir la hora exacta; "Fijada ×" la suelta.

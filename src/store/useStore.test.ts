@@ -137,22 +137,18 @@ describe('traslados y tareas fijadas', () => {
     expect(st().pins[d]).toEqual({});
   });
 
-  it('dar inicio a un traslado lo mueve a ahora, y al llegar guarda lo que duró', () => {
+  it('los traslados marcados con "Salgo ahora" (función antigua) vuelven a su hora de siempre', () => {
     const d = today();
+    st().importData({ ...st(), travel: { [d]: { ida: { start: '08:40', startedAt: 1, durationMin: 5 }, vuelta: { start: '18:00' } } } } as never);
+    expect(st().travel[d]).toEqual({ vuelta: { start: '18:00' } });
+  });
+
+  it('mueve, quita y restaura un traslado', () => {
+    const d = today();
+    st().setTravel(d, 'vuelta', { start: '18:00' });
+    expect(st().travel[d]!.vuelta).toEqual({ start: '18:00' });
     st().setTravel(d, 'vuelta', { removed: true });
-    st().startTravel(d, 'vuelta');
-    const o = st().travel[d]!.vuelta!;
-    expect(o.removed).toBeUndefined();
-    expect(o.startedAt).toBeGreaterThan(0);
-    expect(o.start).toMatch(/^\d\d:\d\d$/);
-    st().arriveTravel(d, 'vuelta');
-    expect(st().travel[d]!.vuelta!.durationMin).toBe(1);
-    st().undoArriveTravel(d, 'vuelta');
-    expect(st().travel[d]!.vuelta!.durationMin).toBeUndefined();
-    expect(st().travel[d]!.vuelta!.startedAt).toBeGreaterThan(0);
-    st().undoStartTravel(d, 'vuelta');
-    expect(st().travel[d]!.vuelta!.startedAt).toBeUndefined();
-    expect(st().travel[d]!.vuelta!.start).toBeUndefined();
+    expect(st().travel[d]!.vuelta!.removed).toBe(true);
     st().setTravel(d, 'vuelta', null);
     expect(st().travel[d]).toEqual({});
   });

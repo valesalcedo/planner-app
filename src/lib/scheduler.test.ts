@@ -126,10 +126,10 @@ describe('traslados', () => {
     expect(travelBlocksFor(DAY, classes, { [DAY]: ['c1', 'c2'] }, undefined, travelSettings)).toEqual([]);
   });
 
-  it('respeta la hora a la que lo moviste y lo que realmente duró', () => {
-    const t = travelBlocksFor(DAY, classes, {}, { vuelta: { start: '18:00', durationMin: 75, startedAt: 1 } }, travelSettings);
+  it('respeta la hora a la que lo moviste', () => {
+    const t = travelBlocksFor(DAY, classes, {}, { vuelta: { start: '18:00' } }, travelSettings);
     const vuelta = t.find((x) => x.leg === 'vuelta')!;
-    expect([vuelta.start, vuelta.end, vuelta.moved, vuelta.arrived]).toEqual([1080, 1155, true, true]);
+    expect([vuelta.start, vuelta.end, vuelta.moved]).toEqual([1080, 1140, true]);
   });
 
   it('cuenta como ocupado y solo recibe tareas marcadas para el transporte', () => {

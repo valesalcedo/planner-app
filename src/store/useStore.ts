@@ -20,7 +20,7 @@ import type {
 } from '../types';
 import { uid } from '../lib/id';
 import { balanceOf, bonusFor, classRef, computeStreak, multiplierFor, starsForFocus } from '../lib/rewards';
-import { hhmmToMin, minToHHMM, minutesOfDay, today, tsAt } from '../lib/time';
+import { hhmmToMin, today, tsAt } from '../lib/time';
 import { initialData } from './defaults';
 
 type Draft<T extends { id: string }> = Omit<T, 'id'>;
@@ -91,14 +91,6 @@ interface Actions {
   setPin: (date: ISODate, key: string, pin: TaskPin | null) => void;
   /** Cambia un traslado ese día. null lo deja como venía. */
   setTravel: (date: ISODate, leg: TravelLeg, patch: TravelOverride | null) => void;
-  /** Le das inicio a un traslado de hoy: parte ahora. */
-  startTravel: (date: ISODate, leg: TravelLeg) => void;
-  /** Llegaste: el traslado dura lo que de verdad duró. */
-  arriveTravel: (date: ISODate, leg: TravelLeg) => void;
-  /** Deshacer "Llegué": vuelve a estar en camino. */
-  undoArriveTravel: (date: ISODate, leg: TravelLeg) => void;
-  /** Deshacer "Salgo ahora": el traslado vuelve a su hora de siempre. */
-  undoStartTravel: (date: ISODate, leg: TravelLeg) => void;
 
   saveEvent: (e: CalendarEvent | Draft<CalendarEvent>) => void;
   deleteEvent: (id: string) => void;
@@ -131,6 +123,28 @@ function upsert<T extends { id: string }>(list: T[], item: T | Draft<T>): T[] {
   return [...list, { ...(item as Draft<T>), id: uid() } as T];
 }
 
+/**
+ * Antes se podía marcar "Salgo ahora" y "Llegué" en un traslado. Eso ya no existe:
+ * los traslados marcados así vuelven a su hora y duración de siempre.
+ */
+function cleanTravel(travel: AppData['travel'] | undefined): AppData['travel'] | undefined {
+  if (!travel) return travel;
+  return Object.fromEntries(
+    Object.entries(travel).map(([date, legs]) => [
+      date,
+      Object.fromEntries(
+        Object.entries(legs ?? {}).flatMap(([leg, o]) => {
+          const { startedAt, durationMin, ...rest } = (o ?? {}) as TravelOverride & { startedAt?: number; durationMin?: number };
+          void durationMin;
+          const kept = startedAt ? { ...rest, start: undefined } : rest;
+          const clean = Object.fromEntries(Object.entries(kept).filter(([, v]) => v !== undefined));
+          return Object.keys(clean).length ? [[leg, clean]] : [];
+        }),
+      ),
+    ]),
+  );
+}
+
 /** Completa con valores por defecto lo que falte (respaldos o datos de versiones anteriores). */
 function withDefaults(data: Partial<AppData>): AppData {
   const base = initialData();
@@ -139,6 +153,7 @@ function withDefaults(data: Partial<AppData>): AppData {
   return {
     ...base,
     ...defined(data),
+    travel: cleanTravel(data.travel) ?? base.travel,
     settings: {
       ...base.settings,
       ...defined(data.settings),
@@ -307,25 +322,6 @@ export const useStore = create<Store>()(
             else delete day[leg];
             return { travel: { ...s.travel, [date]: day } };
           }),
-
-        startTravel: (date, leg) =>
-          get().setTravel(date, leg, {
-            start: minToHHMM(minutesOfDay(Date.now())),
-            startedAt: Date.now(),
-            durationMin: undefined,
-            removed: undefined,
-          }),
-
-        arriveTravel: (date, leg) => {
-          const o = get().travel[date]?.[leg];
-          if (!o?.startedAt) return;
-          get().setTravel(date, leg, { durationMin: Math.max(1, Math.round((Date.now() - o.startedAt) / 60000)) });
-        },
-
-        undoArriveTravel: (date, leg) => get().setTravel(date, leg, { durationMin: undefined }),
-
-        undoStartTravel: (date, leg) =>
-          get().setTravel(date, leg, { start: undefined, startedAt: undefined, durationMin: undefined }),
 
         saveEvent: (e) => set((s) => ({ events: upsert(s.events, e) })),
         deleteEvent: (id) => set((s) => ({ events: s.events.filter((e) => e.id !== id) })),

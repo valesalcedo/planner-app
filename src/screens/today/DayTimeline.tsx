@@ -7,7 +7,7 @@ import { inkOn } from '../../lib/color';
 import type { DoneBlock } from '../../lib/doneBlocks';
 import type { DayPlan, Placement, TravelBlock } from '../../lib/scheduler';
 import { pinAt, unitKey } from '../../lib/scheduler';
-import { addDays, formatDuration, hhmmToMin, minToHHMM, minutesOfDay, today, tsAt, weekdayOf } from '../../lib/time';
+import { addDays, formatDuration, hhmmToMin, minToHHMM, today, tsAt, weekdayOf } from '../../lib/time';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
 import type { Attendance, ISODate, Task, TaskPin, TravelLeg } from '../../types';
@@ -56,10 +56,6 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
   const pins = useStore((s) => s.pins[date]);
   const setPin = useStore((s) => s.setPin);
   const setTravel = useStore((s) => s.setTravel);
-  const startTravel = useStore((s) => s.startTravel);
-  const arriveTravel = useStore((s) => s.arriveTravel);
-  const undoArriveTravel = useStore((s) => s.undoArriveTravel);
-  const undoStartTravel = useStore((s) => s.undoStartTravel);
   const [moving, setMoving] = useState<MoveState | null>(null);
   const setTab = useUI((s) => s.setTab);
   const showToast = useUI((s) => s.showToast);
@@ -69,7 +65,6 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
 
   const todayDate = today();
   const isPast = date < todayDate;
-  const isToday = date === todayDate;
 
   const colorOf = (kind: string, sourceId: string): string | undefined => {
     if (kind === 'evento') {
@@ -237,23 +232,8 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
               ) : row.type === 'travel' ? (
                 <TravelCard
                   block={row.block}
-                  isToday={isToday}
-                  now={now}
                   dragging={drag?.payload.kind === 'travel' && drag.payload.leg === row.block.leg}
                   handle={handleProps({ kind: 'travel', leg: row.block.leg, title: TRAVEL_TITLE[row.block.leg] })}
-                  onStart={() => {
-                    startTravel(date, row.block.leg);
-                    showToast('¡Buen viaje! Reordené tu día desde ahora');
-                  }}
-                  onArrive={() => arriveTravel(date, row.block.leg)}
-                  onUndoArrive={() => {
-                    undoArriveTravel(date, row.block.leg);
-                    showToast('Listo: sigues en camino');
-                  }}
-                  onUndoStart={() => {
-                    undoStartTravel(date, row.block.leg);
-                    showToast(`${TRAVEL_TITLE[row.block.leg]} vuelve a su hora de siempre`);
-                  }}
                 >
                   {plan.placements.filter((p) => p.travel === row.block.leg).map((p) => workCard(p, true))}
                 </TravelCard>
@@ -549,31 +529,18 @@ function DoneCard({ block, courseName, onUndo }: DoneCardProps) {
 
 interface TravelCardProps {
   block: TravelBlock;
-  isToday: boolean;
-  now: number;
   dragging: boolean;
   handle: ReturnType<ReturnType<typeof useDragDrop>['handleProps']>;
-  onStart: () => void;
-  onArrive: () => void;
-  onUndoArrive: () => void;
-  onUndoStart: () => void;
   children: React.ReactNode;
 }
 
 /** Traslado casa ↔ U: tiempo ocupado donde solo van tareas para el transporte. */
-function TravelCard({ block, isToday, now, dragging, handle, onStart, onArrive, onUndoArrive, onUndoStart, children }: TravelCardProps) {
+function TravelCard({ block, dragging, handle, children }: TravelCardProps) {
   const title = TRAVEL_TITLE[block.leg];
   const range = `${minToHHMM(block.start)}–${minToHHMM(block.end)}`;
-  const nowMin = minutesOfDay(now);
   const hasTasks = Array.isArray(children) ? children.length > 0 : !!children;
 
-  const status = block.arrived
-    ? ` · llegaste (${formatDuration(block.end - block.start)})`
-    : block.started
-      ? ' · en camino'
-      : block.moved
-        ? ' · movido'
-        : '';
+  const status = block.moved ? ' · movido' : '';
 
   return (
     <div className={`${styles.block} ${styles.travel} ${dragging ? styles.lifted : ''}`} data-drop="travel" data-leg={block.leg}>
@@ -590,32 +557,10 @@ function TravelCard({ block, isToday, now, dragging, handle, onStart, onArrive, 
             </span>
           </div>
         </div>
-        {!block.started && (
-          <button type="button" className={styles.handle} style={{ position: 'static', flexShrink: 0 }} aria-label={`Mover ${title}`} {...handle}>
-            <Icon name="grip" size={20} strokeWidth={3.2} />
-          </button>
-        )}
+        <button type="button" className={styles.handle} style={{ position: 'static', flexShrink: 0 }} aria-label={`Mover ${title}`} {...handle}>
+          <Icon name="grip" size={20} strokeWidth={3.2} />
+        </button>
       </div>
-      {isToday && !block.started && nowMin < block.end + 120 && (
-        <button type="button" className={`btn btn--sm ${styles.blockBtn}`} style={{ alignSelf: 'flex-start' }} onClick={onStart}>
-          <Icon name="play" size={14} /> Salgo ahora
-        </button>
-      )}
-      {isToday && block.started && !block.arrived && (
-        <div className="row" style={{ gap: 8 }}>
-          <button type="button" className={`btn btn--sm ${styles.blockBtn}`} onClick={onArrive}>
-            <Icon name="check" size={14} strokeWidth={3} /> Llegué
-          </button>
-          <button type="button" className={`btn btn--sm ${styles.blockBtn}`} onClick={onUndoStart}>
-            Aún no salgo
-          </button>
-        </div>
-      )}
-      {block.arrived && (
-        <button type="button" className={`btn btn--sm ${styles.blockBtn}`} style={{ alignSelf: 'flex-start' }} onClick={onUndoArrive}>
-          Aún no llego
-        </button>
-      )}
       {hasTasks ? (
         <div className="stack" style={{ gap: 8 }}>
           {children}

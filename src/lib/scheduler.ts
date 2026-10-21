@@ -62,10 +62,6 @@ export interface TravelBlock {
   leg: TravelLeg;
   start: number;
   end: number;
-  /** Ya le diste inicio. */
-  started: boolean;
-  /** Ya marcaste que llegaste. */
-  arrived: boolean;
   /** Lo moviste de su hora por defecto. */
   moved: boolean;
   /** Ese día lo quitaste (se muestra para poder restaurarlo, pero no ocupa tiempo). */
@@ -144,7 +140,7 @@ export function busyBlocksFor(
 /**
  * Traslados del día: solo los días con alguna clase (que no se haya marcado "no hubo").
  * La ida termina cuando empieza la primera clase y la vuelta parte cuando termina la última,
- * salvo que la hayas movido o le hayas dado inicio.
+ * salvo que la hayas movido.
  */
 export function travelBlocksFor(
   date: ISODate,
@@ -167,13 +163,10 @@ export function travelBlocksFor(
   return (['ida', 'vuelta'] as const).map((leg) => {
     const o = overrides?.[leg] ?? {};
     const start = o.start ? hhmmToMin(o.start) : defaults[leg];
-    const dur = o.durationMin ?? settings.travelMin;
     return {
       leg,
       start,
-      end: start + Math.max(1, dur),
-      started: !!o.startedAt,
-      arrived: o.durationMin !== undefined && !!o.startedAt,
+      end: start + settings.travelMin,
       moved: !!o.start,
       removed: !!o.removed,
     };

@@ -116,12 +116,8 @@ export type TravelLeg = 'ida' | 'vuelta';
  * la primera clase y la vuelta parte cuando termina la última.
  */
 export interface TravelOverride {
-  /** Hora de inicio elegida (al arrastrarlo o al darle inicio). */
+  /** Hora de inicio elegida (al arrastrarlo o moverlo). */
   start?: HHMM;
-  /** Duración de este viaje, si no es la de siempre (por ejemplo, al marcar que llegaste). */
-  durationMin?: number;
-  /** Momento en que le diste inicio (ya vas en camino). */
-  startedAt?: number;
   /** Ese día no hay traslado. */
   removed?: boolean;
 }
