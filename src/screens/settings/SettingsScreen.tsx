@@ -5,9 +5,16 @@ import { toISODate } from '../../lib/time';
 import { COURSE_COLORS } from '../../store/defaults';
 import { snapshot, useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
-import type { AppData } from '../../types';
+import { focusPhrase } from '../../lib/voice';
+import type { AppData, Voice } from '../../types';
 import styles from './Settings.module.css';
 import { ThemePicker } from './ThemePicker';
+
+const VOICES: { id: Voice; label: string }[] = [
+  { id: 'femenino', label: 'Enfocada' },
+  { id: 'masculino', label: 'Enfocado' },
+  { id: 'neutro', label: 'Genérico' },
+];
 
 export function SettingsScreen() {
   const courses = useStore((s) => s.courses);
@@ -193,6 +200,19 @@ export function SettingsScreen() {
         <h2 id="day-title" className="section-title">
           Mi día
         </h2>
+        <div className="field">
+          <span id="st-voice" style={{ fontWeight: 800, fontSize: 14 }}>
+            Cómo te hablo
+          </span>
+          <div className="segmented" role="group" aria-labelledby="st-voice">
+            {VOICES.map((v) => (
+              <button key={v.id} type="button" aria-pressed={settings.voice === v.id} onClick={() => updateSettings({ voice: v.id })}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+          <span className="small muted">Ej.: “{focusPhrase('2 h', '3 h', settings.voice)}”</span>
+        </div>
         <div className="grid-2">
           <div className="field">
             <label htmlFor="st-start">Empiezo a las</label>

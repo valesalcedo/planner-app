@@ -192,7 +192,11 @@ export interface Settings {
   /** Minutos de cada traslado. */
   travelMin: number;
   theme: ThemeSetting;
+  /** Cómo te habla la app: "enfocada", "enfocado" o algo genérico ("de foco"). */
+  voice: Voice;
 }
+
+export type Voice = 'femenino' | 'masculino' | 'neutro';
 
 export interface AppData {
   version: 1;

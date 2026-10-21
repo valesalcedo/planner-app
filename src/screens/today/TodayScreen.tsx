@@ -5,6 +5,7 @@ import { useStreak } from '../../hooks/useDerived';
 import { useNow } from '../../hooks/useNow';
 import { doneBlocksFor } from '../../lib/doneBlocks';
 import { buildUnits, busyBlocksFor, planDay, travelBlocksFor } from '../../lib/scheduler';
+import { focusPhrase } from '../../lib/voice';
 import { addDays, formatDuration, formatLongDate, minutesOfDay, today, tsAt } from '../../lib/time';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
@@ -44,10 +45,14 @@ export function TodayScreen() {
 
   const plan = useMemo(() => {
     const fromMin = isToday ? Math.ceil(minutesOfDay(now) / 5) * 5 : 0;
-    const units = buildUnits(isToday ? dayTasks : dayTasks.filter((t) => t.date === date), entries, date);
+    // Un día que ya terminó no agenda nada: lo que quedó sin hacer pasa al día siguiente
+    // (y así sigue hasta hoy), en vez de ocupar horas en que no se trabajó.
+    const units = isPast ? [] : buildUnits(isToday ? dayTasks : dayTasks.filter((t) => t.date === date), entries, date);
     const travel = travelBlocksFor(date, weekly, skipped, travelOverrides, settings);
     return planDay(units, busyBlocksFor(date, weekly, events, skipped), settings, fromMin, { travel, pins });
-  }, [dayTasks, entries, date, weekly, events, skipped, settings, isToday, now, travelOverrides, pins]);
+  }, [dayTasks, entries, date, weekly, events, skipped, settings, isToday, isPast, now, travelOverrides, pins]);
+
+  const rolledOver = isPast ? dayTasks.filter((t) => !t.done).length : 0;
 
   // Lo hecho se queda en las horas en que se trabajó (aunque la tarea fuera de otro día).
   const doneBlocks = useMemo(() => doneBlocksFor(date, tasks, entries), [date, tasks, entries]);
@@ -100,7 +105,7 @@ export function TodayScreen() {
       <div className="card stack">
         <div className="row row--between small" style={{ fontWeight: 700, flexWrap: 'wrap', rowGap: 2 }}>
           <span>
-            {formatDuration(focusedMin)} enfocada de {formatDuration(plannedMin)} planificadas
+            {focusPhrase(formatDuration(focusedMin), formatDuration(plannedMin), settings.voice)}
           </span>
           {streak > 0 && (
             <span className="row" style={{ gap: 4, color: 'var(--primary-deep)', whiteSpace: 'nowrap' }}>
@@ -125,7 +130,14 @@ export function TodayScreen() {
       </div>
 
       {view === 'dia' ? (
-        <DayTimeline date={date} plan={plan} doneBlocks={doneBlocks} doneTasks={doneWithoutTime} />
+        <>
+          <DayTimeline date={date} plan={plan} doneBlocks={doneBlocks} doneTasks={doneWithoutTime} />
+          {rolledOver > 0 && (
+            <p className="small muted" style={{ textAlign: 'center' }}>
+              {rolledOver === 1 ? '1 tarea sin terminar pasó' : `${rolledOver} tareas sin terminar pasaron`} al día siguiente.
+            </p>
+          )}
+        </>
       ) : (
         <TaskList tasks={dayTasks} date={date} />
       )}

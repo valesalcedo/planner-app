@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS: Settings = {
   travelEnabled: true,
   travelMin: 60,
   theme: { id: 'original' },
+  voice: 'neutro',
 };
 
 /** Paleta pastel sugerida. Además se puede elegir cualquier color a mano. */
