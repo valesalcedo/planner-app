@@ -59,6 +59,14 @@ export interface Task {
   createdAt: number;
 }
 
+/** Tarea borrada: queda 30 días en la papelera por si quieres recuperarla. */
+export interface TrashedTask {
+  task: Task;
+  deletedAt: number;
+  /** Bono por terminarla que se quitó al borrarla. Vuelve tal cual si la recuperas. */
+  bonus?: StarTx[];
+}
+
 export interface TimeEntry {
   id: string;
   taskId: string;
@@ -200,6 +208,8 @@ export interface AppData {
   categories: Category[];
   activityTypes: ActivityType[];
   tasks: Task[];
+  /** Tareas borradas hace menos de 30 días. */
+  trash: TrashedTask[];
   entries: TimeEntry[];
   activeTimer: ActiveTimer | null;
   weekly: WeeklyBlock[];

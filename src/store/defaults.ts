@@ -40,6 +40,7 @@ export function initialData(): AppData {
       { id: 'otro', name: 'Otro' },
     ],
     tasks: [],
+    trash: [],
     entries: [],
     activeTimer: null,
     weekly: [],

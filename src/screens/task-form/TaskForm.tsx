@@ -29,6 +29,7 @@ export function TaskForm() {
   const addTask = useStore((s) => s.addTask);
   const updateTask = useStore((s) => s.updateTask);
   const deleteTask = useStore((s) => s.deleteTask);
+  const restoreTask = useStore((s) => s.restoreTask);
   const openPage = useUI((s) => s.openPage);
   const openTimeLog = useUI((s) => s.openTimeLog);
 
@@ -86,10 +87,10 @@ export function TaskForm() {
               type="button"
               className="btn btn--danger"
               onClick={() => {
-                if (confirm(`¿Borrar "${existing.title}"? Se quita el bono de estrellas por terminarla; el tiempo cronometrado se mantiene en tus estadísticas.`)) {
-                  deleteTask(existing.id);
-                  close();
-                }
+                const id = existing.id;
+                deleteTask(id);
+                close();
+                showToast('Tarea a la papelera', { label: 'Deshacer', run: () => restoreTask(id) });
               }}
             >
               Borrar

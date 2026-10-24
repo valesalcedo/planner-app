@@ -161,3 +161,46 @@ describe('traslados y tareas fijadas', () => {
     expect(st().settings.travelMin).toBe(60);
   });
 });
+
+describe('papelera', () => {
+  beforeEach(() => st().resetData());
+
+  it('borrar manda a la papelera y recuperar devuelve la tarea con su bono', () => {
+    const id = addTestTask('Revisar simulacros');
+    st().setTaskDone(id, true);
+    expect(balanceOf(st().stars)).toBe(10);
+    st().deleteTask(id);
+    expect(st().tasks).toHaveLength(0);
+    expect(st().trash).toHaveLength(1);
+    expect(balanceOf(st().stars)).toBe(0);
+    st().restoreTask(id);
+    expect(st().tasks.map((t) => t.id)).toEqual([id]);
+    expect(st().tasks[0].done).toBe(true);
+    expect(st().trash).toHaveLength(0);
+    expect(balanceOf(st().stars)).toBe(10);
+  });
+
+  it('el tiempo registrado y sus estrellas se mantienen al borrar', () => {
+    const id = addTestTask();
+    expect(st().addManualEntry({ taskId: id, date: '2026-01-05', start: '10:00', end: '10:30' })).toBeGreaterThan(0);
+    const before = balanceOf(st().stars);
+    st().deleteTask(id);
+    expect(st().entries).toHaveLength(1);
+    expect(balanceOf(st().stars)).toBe(before);
+    st().purgeTask(id);
+    expect(st().trash).toHaveLength(0);
+    expect(st().entries).toHaveLength(1);
+  });
+
+  it('recupera una tarea borrada antes de la papelera a partir de su tiempo', () => {
+    const id = addTestTask('Revisar simulacros');
+    st().addManualEntry({ taskId: id, date: '2026-01-05', start: '10:00', end: '11:10' });
+    // Como borraba la versión anterior: la tarea desaparece sin pasar por la papelera.
+    useStore.setState((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }));
+    st().recoverLostTask(id);
+    const t = st().tasks.find((x) => x.id === id)!;
+    expect(t.title).toBe('Revisar simulacros');
+    expect(t.estimateMin).toBe(75);
+    expect(t.done).toBe(false);
+  });
+});

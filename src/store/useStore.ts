@@ -16,11 +16,13 @@ import type {
   TravelLeg,
   TravelOverride,
   TimeEntry,
+  TrashedTask,
   WeeklyBlock,
 } from '../types';
 import { uid } from '../lib/id';
 import { balanceOf, bonusFor, classRef, computeStreak, multiplierFor, starsForFocus } from '../lib/rewards';
-import { hhmmToMin, today, tsAt } from '../lib/time';
+import { hhmmToMin, toISODate, today, tsAt } from '../lib/time';
+import { isExpired, lostTasks } from '../lib/trash';
 import { initialData } from './defaults';
 
 type Draft<T extends { id: string }> = Omit<T, 'id'>;
@@ -48,6 +50,7 @@ function pickData(s: AppData): AppData {
     categories: s.categories,
     activityTypes: s.activityTypes,
     tasks: s.tasks,
+    trash: s.trash,
     entries: s.entries,
     activeTimer: s.activeTimer,
     weekly: s.weekly,
@@ -65,7 +68,17 @@ function pickData(s: AppData): AppData {
 interface Actions {
   addTask: (t: Omit<Task, 'id' | 'createdAt' | 'done'>) => void;
   updateTask: (id: string, patch: Partial<Task>) => void;
+  /** Manda la tarea a la papelera (30 días). Su tiempo y estrellas de foco se mantienen. */
   deleteTask: (id: string) => void;
+  /** Saca una tarea de la papelera y la deja como estaba, con su bono si estaba terminada. */
+  restoreTask: (id: string) => void;
+  /** Borra para siempre una tarea de la papelera. */
+  purgeTask: (id: string) => void;
+  /**
+   * Vuelve a crear una tarea borrada antes de que existiera la papelera, a partir de su
+   * tiempo registrado. Las subtareas y el avance no se pueden recuperar.
+   */
+  recoverLostTask: (taskId: string) => void;
   setTaskDone: (id: string, done: boolean) => void;
   setSubtaskDone: (taskId: string, subtaskId: string, done: boolean) => void;
   moveTask: (id: string, date: ISODate) => void;
@@ -154,6 +167,8 @@ function withDefaults(data: Partial<AppData>): AppData {
     ...base,
     ...defined(data),
     travel: cleanTravel(data.travel) ?? base.travel,
+    // Lo que lleva más de 30 días en la papelera se borra al abrir la app.
+    trash: (data.trash ?? base.trash).filter((x) => !isExpired(x)),
     settings: {
       ...base.settings,
       ...defined(data.settings),
@@ -187,13 +202,55 @@ export const useStore = create<Store>()(
           set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
 
         deleteTask: (id) => {
-          // El bono por terminarla se quita (la tarea ya no existe). El tiempo cronometrado y
-          // sus estrellas se mantienen, porque ese trabajo sí lo hiciste.
+          const task = get().tasks.find((t) => t.id === id);
+          if (!task) return;
+          if (get().activeTimer?.taskId === id) get().stopTimer();
+          // El bono por terminarla se guarda junto a la tarea en la papelera: no cuenta en tu saldo
+          // mientras esté borrada, y vuelve tal cual si la recuperas. El tiempo cronometrado y sus
+          // estrellas se mantienen, porque ese trabajo sí lo hiciste.
+          const bonus = get().stars.filter((t) => t.kind === 'tarea' && t.ref === id);
+          const item: TrashedTask = { task, deletedAt: Date.now(), bonus: bonus.length ? bonus : undefined };
           revoke('tarea', id);
           set((s) => ({
             tasks: s.tasks.filter((t) => t.id !== id),
-            activeTimer: s.activeTimer?.taskId === id ? null : s.activeTimer,
+            trash: [item, ...s.trash.filter((x) => x.task.id !== id)],
           }));
+        },
+
+        restoreTask: (id) => {
+          const item = get().trash.find((x) => x.task.id === id);
+          if (!item) return;
+          set((s) => ({
+            tasks: [...s.tasks.filter((t) => t.id !== id), item.task],
+            trash: s.trash.filter((x) => x.task.id !== id),
+            stars: [...s.stars.filter((t) => !(t.kind === 'tarea' && t.ref === id)), ...(item.task.done ? item.bonus ?? [] : [])],
+          }));
+        },
+
+        purgeTask: (id) => set((s) => ({ trash: s.trash.filter((x) => x.task.id !== id) })),
+
+        recoverLostTask: (taskId) => {
+          const s = get();
+          const lost = lostTasks(s.tasks, s.trash, s.entries, s.stars).find((l) => l.taskId === taskId);
+          if (!lost) return;
+          const first = lost.entries[0];
+          const task: Task = {
+            // Mismo id: así el tiempo registrado vuelve a quedar ligado a la tarea.
+            id: taskId,
+            title: lost.title ?? 'Tarea recuperada',
+            date: toISODate(new Date(lost.lastAt)),
+            mustToday: false,
+            difficulty: 'media',
+            estimateMin: Math.max(30, Math.ceil(lost.minutes / 15) * 15),
+            courseId: first.courseId,
+            activityId: first.activityId,
+            personal: first.personal,
+            categoryId: first.categoryId,
+            subtasks: [],
+            done: false,
+            createdAt: Math.min(...lost.entries.map((e) => e.start)),
+          };
+          set((st) => ({ tasks: [...st.tasks, task] }));
         },
 
         setTaskDone: (id, done) => {

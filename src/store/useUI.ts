@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { ISODate } from '../types';
 
 export type Tab = 'hoy' | 'calendario' | 'foco' | 'stats' | 'tienda';
-export type Page = 'ajustes' | 'horario' | null;
+export type Page = 'ajustes' | 'horario' | 'papelera' | null;
 
 interface TaskFormState {
   taskId?: string;
@@ -13,6 +13,11 @@ interface TimeLogState {
   taskId?: string;
 }
 
+export interface ToastAction {
+  label: string;
+  run: () => void;
+}
+
 interface UIState {
   tab: Tab;
   page: Page;
@@ -20,13 +25,16 @@ interface UIState {
   /** Hoja para agregar tiempo a mano. */
   timeLog: TimeLogState | null;
   toast: string | null;
+  /** Botón opcional del aviso (por ejemplo, "Deshacer"). */
+  toastAction: ToastAction | null;
   setTab: (tab: Tab) => void;
   openPage: (page: Page) => void;
   openTaskForm: (state?: TaskFormState) => void;
   closeTaskForm: () => void;
   openTimeLog: (state?: TimeLogState) => void;
   closeTimeLog: () => void;
-  showToast: (msg: string) => void;
+  showToast: (msg: string, action?: ToastAction) => void;
+  hideToast: () => void;
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -38,6 +46,7 @@ export const useUI = create<UIState>()((set) => ({
   taskForm: null,
   timeLog: null,
   toast: null,
+  toastAction: null,
   setTab: (tab) => {
     set({ tab, page: null });
     window.scrollTo({ top: 0 });
@@ -50,9 +59,14 @@ export const useUI = create<UIState>()((set) => ({
   closeTaskForm: () => set({ taskForm: null }),
   openTimeLog: (state = {}) => set({ timeLog: state }),
   closeTimeLog: () => set({ timeLog: null }),
-  showToast: (msg) => {
+  showToast: (msg, action) => {
     clearTimeout(toastTimer);
-    set({ toast: msg });
-    toastTimer = setTimeout(() => set({ toast: null }), 2600);
+    set({ toast: msg, toastAction: action ?? null });
+    // Con un botón se queda más rato, para alcanzar a tocarlo.
+    toastTimer = setTimeout(() => set({ toast: null, toastAction: null }), action ? 6000 : 2600);
+  },
+  hideToast: () => {
+    clearTimeout(toastTimer);
+    set({ toast: null, toastAction: null });
   },
 }));

@@ -457,6 +457,26 @@ select.input {
   animation: toast-in 0.2s ease-out;
 }
 
+.toast--action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 6px 6px 18px;
+  text-align: left;
+}
+
+.toast__btn {
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--pill);
+  background: var(--accent);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;

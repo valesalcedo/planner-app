@@ -29,6 +29,7 @@ export function SettingsScreen() {
   const updateSettings = useStore((s) => s.updateSettings);
   const importData = useStore((s) => s.importData);
   const resetData = useStore((s) => s.resetData);
+  const trashCount = useStore((s) => s.trash.length);
   const openPage = useUI((s) => s.openPage);
   const showToast = useUI((s) => s.showToast);
 
@@ -262,6 +263,16 @@ export function SettingsScreen() {
           <NumberField id="st-class" label="Por ir a clases" value={settings.starsPerClass} onChange={(v) => updateSettings({ starsPerClass: Math.round(v) })} />
         </div>
       </section>
+
+      <button type="button" className="card row row--between" style={{ border: 'none', minHeight: 56, textAlign: 'left' }} onClick={() => openPage('papelera')}>
+        <span className="stack" style={{ gap: 0 }}>
+          <span style={{ fontWeight: 800 }}>Papelera</span>
+          <span className="small muted">
+            {trashCount === 0 ? 'Tareas borradas en los últimos 30 días' : `${trashCount} ${trashCount === 1 ? 'tarea borrada' : 'tareas borradas'}`}
+          </span>
+        </span>
+        <Icon name="next" />
+      </button>
 
       <section className="card card--lg stack" aria-labelledby="backup-title">
         <h2 id="backup-title" className="section-title">
