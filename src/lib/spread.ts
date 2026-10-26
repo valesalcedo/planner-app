@@ -3,8 +3,9 @@
  *
  * Una tarea con fecha de inicio ("Hacer el día") y fecha de entrega, y con subtareas, no se
  * hace toda el primer día: sus subtareas se reparten entre los días que hay para avanzarla.
- *  - El avance va parejo: al final de cada día debería llevarse más o menos la parte que
- *    corresponde (si son 3 días, un tercio por día).
+ *  - Se empieza el primer día y el avance va parejo: un día recibe algo solo si vas atrasada
+ *    respecto de la parte que corresponde (si son 3 días, un tercio por día). Así, con pocas
+ *    subtareas y muchos días, quedan espaciadas y con días libres antes de la entrega.
  *  - Un día solo recibe lo que cabe en su tiempo libre (descontando clases, traslados y las
  *    otras tareas de ese día). Lo que no cabe pasa a los días siguientes.
  *  - El último día recibe todo lo que quede, quepa o no.
@@ -121,16 +122,20 @@ export function spreadSubtasks(tasks: Task[], ctx: SpreadContext): SubtaskDays {
       const isLast = i === range.length - 1;
       // Lo que debería llevarse hecho al terminar este día, si el avance fuera parejo.
       const target = (total * (i + 1)) / range.length;
+      let used = 0;
       while (rest.length > 0) {
         const { id, min } = rest[0];
         if (!isLast) {
           if (min > capacity(d)) break;
-          // Se agrega si al menos la mitad de la subtarea cae dentro de lo que toca hoy.
-          if (done + min / 2 > target) break;
+          // Si vas al día (o adelantada), este día no recibe nada.
+          if (done >= target) break;
+          // Si ya recibió algo, otra subtarea más solo si la mitad cae dentro de lo que toca.
+          if (used > 0 && done + min / 2 > target) break;
         }
         days.set(id, d);
         rest.shift();
         done += min;
+        used += min;
         addLoad(d, min);
       }
     });

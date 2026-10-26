@@ -50,8 +50,22 @@ describe('spreadSubtasks', () => {
   it('con más días que subtareas, las espacia en vez de amontonarlas al principio', () => {
     const t = task({ id: 'x', deadline: FRI, subtasks: [sub('a'), sub('b')] });
     const days = spreadSubtasks([t], ctx());
-    expect(days.get('a')).not.toBe(days.get('b'));
+    expect(days.get('a')).toBe(MON);
     expect(days.get('b')! > days.get('a')!).toBe(true);
+  });
+
+  it('siempre empieza el primer día, aunque haya muchos días y pocas subtareas', () => {
+    const SAT = '2026-10-31';
+    const t = task({ id: 'x', deadline: SAT, subtasks: [sub('a', 45), sub('b', 30), sub('c', 60)] });
+    const days = spreadSubtasks([t], ctx());
+    expect(days.get('a')).toBe(MON);
+    expect(new Set([days.get('a'), days.get('b'), days.get('c')]).size).toBe(3);
+  });
+
+  it('no amontona dos subtareas el primer día si con una basta', () => {
+    const t = task({ id: 'x', deadline: THU, subtasks: [sub('a', 45), sub('b', 90), sub('c', 60), sub('d', 45)] });
+    const days = spreadSubtasks([t], ctx());
+    expect(['a', 'b', 'c', 'd'].map((id) => days.get(id))).toEqual([MON, TUE, WED, THU]);
   });
 
   it('si una subtarea no cabe en el tiempo libre del día, pasa al siguiente', () => {
