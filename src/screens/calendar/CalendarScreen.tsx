@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { useLookups } from '../../hooks/useDerived';
+import { useNow } from '../../hooks/useNow';
+import { useSubtaskDays } from '../../hooks/useSubtaskDays';
 import { inkOn } from '../../lib/color';
-import { MONTHS, WEEKDAYS_SHORT, addDays, formatLongDate, parseISODate, startOfWeek, toISODate, today } from '../../lib/time';
+import { minutesOn, taskDays } from '../../lib/spread';
+import { MONTHS, WEEKDAYS_SHORT, addDays, formatDuration, formatLongDate, parseISODate, startOfWeek, toISODate, today } from '../../lib/time';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
 import type { CalendarEvent, EventKind } from '../../types';
@@ -16,7 +19,8 @@ export const EVENT_LABEL: Record<EventKind, string> = {
 };
 
 export function CalendarScreen() {
-  const todayDate = today();
+  const now = useNow(60_000);
+  const todayDate = today(new Date(now));
   const [selected, setSelected] = useState(todayDate);
   const [month, setMonth] = useState(() => todayDate.slice(0, 7));
   const [editing, setEditing] = useState<CalendarEvent | 'new' | null>(null);
@@ -26,6 +30,7 @@ export function CalendarScreen() {
   const openPage = useUI((s) => s.openPage);
   const openTaskForm = useUI((s) => s.openTaskForm);
   const { course, category } = useLookups();
+  const subDays = useSubtaskDays(now);
 
   const first = parseISODate(`${month}-01`);
   const gridStart = startOfWeek(`${month}-01`);
@@ -46,7 +51,12 @@ export function CalendarScreen() {
 
   const dayEvents = events.filter((e) => e.date === selected).sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''));
   const dayDeadlines = tasks.filter((t) => t.deadline === selected);
-  const dayTasks = tasks.filter((t) => t.date === selected && t.deadline !== selected);
+  // Una tarea repartida aparece en cada día en que le toca avanzar algo.
+  const dayTasks = tasks.filter(
+    (t) =>
+      t.deadline !== selected &&
+      (selected < todayDate || t.done ? t.date === selected : taskDays(t, subDays, todayDate).includes(selected)),
+  );
   const upcoming = events
     .filter((e) => e.kind === 'evaluacion' && e.date > selected)
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -148,7 +158,7 @@ export function CalendarScreen() {
         {dayTasks.map((t) => (
           <button key={t.id} type="button" className={`${styles.item} ${styles.task}`} onClick={() => openTaskForm({ taskId: t.id })}>
             <span style={{ fontWeight: 700, fontSize: 14, textDecoration: t.done ? 'line-through' : undefined }}>{t.title}</span>
-            <span className="small muted">{t.estimateMin} min</span>
+            <span className="small muted">{formatDuration(minutesOn(t, selected, subDays, todayDate))}</span>
           </button>
         ))}
       </section>

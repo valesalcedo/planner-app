@@ -8,6 +8,7 @@ Es una PWA (app web instalable): se publica gratis en GitHub Pages y se agrega a
 
 - **Hoy**: tu día ordenado automáticamente. Lo que vence hoy o marcas "sí o sí" va primero, lo fácil y corto va entre clases y lo que no alcanza se puede pasar a mañana. Si un día no hay clase, la marcas con "No hay" y se libera ese tiempo.
 - **Tareas** con tiempo estimado, dificultad, fecha de entrega, ramo, tipo de actividad y subtareas que se pueden avanzar en momentos distintos.
+- **Reparto entre días**: si una tarea tiene fecha de inicio, fecha de entrega y subtareas, las subtareas se reparten solas entre esos días según tu tiempo libre. Si una no cabe en un día pasa al siguiente, y lo que no alcanzaste se vuelve a repartir. También puedes elegir a mano el día de cada subtarea.
 - **Foco**: cronómetro por tarea o subtarea. Sigue contando aunque cierres la app, porque guarda la hora de inicio.
 - **Calendario** con evaluaciones, entregas y eventos, más tu horario semanal de clases.
 - **Semana**: horas de foco por día, tareas hechas y una tabla de **carga académica** por ramo y tipo de actividad, con botón para copiarla. Úsala con "Semana pasada" cuando llenes la encuesta.

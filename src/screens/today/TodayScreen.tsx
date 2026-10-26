@@ -3,8 +3,10 @@ import { Icon } from '../../components/Icon';
 import { StarBadge } from '../../components/StarBadge';
 import { useStreak } from '../../hooks/useDerived';
 import { useNow } from '../../hooks/useNow';
+import { useSubtaskDays } from '../../hooks/useSubtaskDays';
 import { doneBlocksFor } from '../../lib/doneBlocks';
 import { buildUnits, busyBlocksFor, planDay, travelBlocksFor } from '../../lib/scheduler';
+import { minutesOn, taskDays } from '../../lib/spread';
 import { focusPhrase } from '../../lib/voice';
 import { addDays, formatDuration, formatLongDate, minutesOfDay, today, tsAt } from '../../lib/time';
 import { useStore } from '../../store/useStore';
@@ -37,20 +39,27 @@ export function TodayScreen() {
   const isToday = date === todayDate;
   const isPast = date < todayDate;
 
-  // Hoy incluye lo atrasado; otros días muestran solo lo planificado para ese día.
+  // Día que le toca a cada subtarea de las tareas que se reparten entre varios días.
+  const subDays = useSubtaskDays(now);
+
+  // Hoy incluye lo atrasado; otros días muestran solo lo planificado para ese día. Una tarea
+  // repartida aparece en cada día en que tiene subtareas.
   const dayTasks = useMemo(
-    () => tasks.filter((t) => (isToday ? t.date === date || (t.date < date && !t.done) : t.date === date)),
-    [tasks, date, isToday],
+    () =>
+      tasks.filter((t) =>
+        isPast || t.done ? t.date === date : taskDays(t, subDays, todayDate).includes(date),
+      ),
+    [tasks, date, isPast, subDays, todayDate],
   );
 
   const plan = useMemo(() => {
     const fromMin = isToday ? Math.ceil(minutesOfDay(now) / 5) * 5 : 0;
     // Un día que ya terminó no agenda nada: lo que quedó sin hacer pasa al día siguiente
     // (y así sigue hasta hoy), en vez de ocupar horas en que no se trabajó.
-    const units = isPast ? [] : buildUnits(isToday ? dayTasks : dayTasks.filter((t) => t.date === date), entries, date);
+    const units = isPast ? [] : buildUnits(dayTasks, entries, date, { days: subDays, today: todayDate });
     const travel = travelBlocksFor(date, weekly, skipped, travelOverrides, settings);
     return planDay(units, busyBlocksFor(date, weekly, events, skipped), settings, fromMin, { travel, pins });
-  }, [dayTasks, entries, date, weekly, events, skipped, settings, isToday, isPast, now, travelOverrides, pins]);
+  }, [dayTasks, entries, date, weekly, events, skipped, settings, isToday, isPast, now, travelOverrides, pins, subDays, todayDate]);
 
   const rolledOver = isPast ? dayTasks.filter((t) => !t.done).length : 0;
 
@@ -68,7 +77,7 @@ export function TodayScreen() {
       .filter((e) => e.end > dayStart && e.start < dayEnd)
       .reduce((s, e) => s + (Math.min(e.end, dayEnd) - Math.max(e.start, dayStart)) / 60000, 0) +
     (isToday && activeTimer ? (now - activeTimer.startedAt) / 60000 : 0);
-  const plannedMin = dayTasks.reduce((s, t) => s + t.estimateMin, 0);
+  const plannedMin = dayTasks.reduce((s, t) => s + minutesOn(t, date, subDays, todayDate), 0);
   const pct = plannedMin > 0 ? Math.min(100, (focusedMin / plannedMin) * 100) : 0;
 
   return (
@@ -139,7 +148,7 @@ export function TodayScreen() {
           )}
         </>
       ) : (
-        <TaskList tasks={dayTasks} date={date} />
+        <TaskList tasks={dayTasks} date={date} days={subDays} todayDate={todayDate} />
       )}
 
       <button type="button" className={styles.fab} aria-label="Nueva tarea" onClick={() => openTaskForm({ date })}>

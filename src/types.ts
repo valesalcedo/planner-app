@@ -30,6 +30,8 @@ export interface Subtask {
   title: string;
   estimateMin: number;
   done: boolean;
+  /** Día elegido a mano. Sin él, si la tarea tiene fecha de entrega, se reparte sola entre los días. */
+  date?: ISODate;
 }
 
 export interface Task {

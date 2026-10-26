@@ -1,12 +1,16 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useMemo, useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { Sheet } from '../../components/Sheet';
+import { useNow } from '../../hooks/useNow';
+import { useSubtaskDays } from '../../hooks/useSubtaskDays';
 import { uid } from '../../lib/id';
-import { today } from '../../lib/time';
+import { isSpread, subtaskDay } from '../../lib/spread';
+import { addDays, formatDuration, today } from '../../lib/time';
+import { dayLabel } from '../today/TaskList';
 import { COURSE_COLORS } from '../../store/defaults';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
-import type { Difficulty, Subtask } from '../../types';
+import type { Difficulty, ISODate, Subtask, Task } from '../../types';
 import styles from './TaskForm.module.css';
 
 const PRESETS = [10, 15, 30, 45, 60, 90, 120, 180, 240];
@@ -45,6 +49,33 @@ export function TaskForm() {
   const [mustToday, setMustToday] = useState(existing?.mustToday ?? false);
   const [onTheGo, setOnTheGo] = useState(existing?.onTheGo ?? false);
   const [subtasks, setSubtasks] = useState<Subtask[]>(existing?.subtasks ?? []);
+
+  const now = useNow(60_000);
+  const todayDate = today(new Date(now));
+
+  // La tarea tal como quedaría, para mostrar en qué día cae cada subtarea mientras la editas.
+  const draft = useMemo<Task>(
+    () => ({
+      ...(existing ?? { id: '__borrador__', createdAt: Date.now(), done: false, activityId: 'tareas', difficulty: 'media', estimateMin: 0 }),
+      title,
+      date,
+      deadline: deadline || undefined,
+      mustToday,
+      subtasks: subtasks.filter((s) => s.title.trim() || s.estimateMin > 0).map((s) => ({ ...s, estimateMin: Math.max(1, s.estimateMin || 0) })),
+    }),
+    [existing, title, date, deadline, mustToday, subtasks],
+  );
+  const draftDays = useSubtaskDays(now, draft);
+  const spreads = isSpread(draft);
+  const firstDay = date > todayDate ? date : todayDate;
+  // Días que se pueden elegir para una subtarea: del inicio a la entrega (o dos semanas).
+  const dayOptions = useMemo(() => {
+    const last = deadline && deadline >= firstDay ? deadline : addDays(firstDay, 13);
+    const list: ISODate[] = [];
+    for (let d = firstDay; d <= last && list.length < 60; d = addDays(d, 1)) list.push(d);
+    return list;
+  }, [firstDay, deadline]);
+  const autoDayOf = (s: Subtask) => subtaskDay(draft, { ...s, date: undefined }, draftDays, todayDate);
 
   const subTotal = subtasks.reduce((s, st) => s + (st.estimateMin || 0), 0);
   const finalEstimate = subtasks.length > 0 ? subTotal : estimate;
@@ -110,7 +141,7 @@ export function TaskForm() {
 
         <div className="grid-2">
           <div className="field">
-            <label htmlFor="tf-date">Hacer el día</label>
+            <label htmlFor="tf-date">{deadline && subtasks.length > 0 ? 'Empezar el día' : 'Hacer el día'}</label>
             <input id="tf-date" type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} required />
           </div>
           <div className="field">
@@ -246,10 +277,12 @@ export function TaskForm() {
         <fieldset className={styles.subs}>
           <legend className="field-label">Subtareas</legend>
           <p className="small muted" style={{ margin: 0 }}>
-            Se pueden avanzar en momentos distintos del día.
+            {spreads
+              ? `Se reparten solas entre ${dayLabel(firstDay, todayDate)} y ${dayLabel(deadline > firstDay ? deadline : firstDay, todayDate)} según tu tiempo libre. Si una no cabe en un día, pasa al siguiente. También puedes elegir el día de cada una.`
+              : 'Se pueden avanzar en momentos distintos. Con fecha de entrega, se reparten solas entre los días que tienes.'}
           </p>
           {subtasks.map((s, i) => (
-            <div key={s.id} className={styles.subRow}>
+            <div key={s.id} className={styles.subItem}>
               <input
                 className="input"
                 aria-label={`Subtarea ${i + 1}`}
@@ -275,8 +308,26 @@ export function TaskForm() {
               >
                 <Icon name="close" size={18} />
               </button>
+              {!s.done && (
+                <select
+                  className={`input ${styles.daySelect}`}
+                  aria-label={`Día de la subtarea ${i + 1}`}
+                  value={s.date ?? ''}
+                  onChange={(e) => updateSub(s.id, { date: e.target.value || undefined })}
+                >
+                  <option value="">
+                    {spreads ? 'Automático' : 'Con la tarea'} · {dayLabel(autoDayOf(s), todayDate)}
+                  </option>
+                  {[...new Set([...(s.date && !dayOptions.includes(s.date) ? [s.date] : []), ...dayOptions])].map((d) => (
+                    <option key={d} value={d}>
+                      {dayLabel(d, todayDate)}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           ))}
+          {spreads && subtasks.length > 1 && <SpreadSummary task={draft} days={draftDays} todayDate={todayDate} />}
           <button
             type="button"
             className="btn btn--ghost"
@@ -298,5 +349,25 @@ export function TaskForm() {
         )}
       </form>
     </Sheet>
+  );
+}
+
+/** Resumen del reparto: cuánto toca cada día. */
+function SpreadSummary({ task, days, todayDate }: { task: Task; days: Map<string, ISODate>; todayDate: ISODate }) {
+  const byDay = new Map<ISODate, number>();
+  for (const s of task.subtasks) {
+    if (s.done) continue;
+    const d = subtaskDay(task, s, days, todayDate);
+    byDay.set(d, (byDay.get(d) ?? 0) + s.estimateMin);
+  }
+  const rows = [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b));
+  return (
+    <div className={styles.summary}>
+      {rows.map(([d, min]) => (
+        <span key={d} className="chip chip--lavender">
+          {dayLabel(d, todayDate)} · {formatDuration(min)}
+        </span>
+      ))}
+    </div>
   );
 }

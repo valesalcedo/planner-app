@@ -53,6 +53,7 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
   const setTaskDone = useStore((s) => s.setTaskDone);
   const setSubtaskDone = useStore((s) => s.setSubtaskDone);
   const moveTask = useStore((s) => s.moveTask);
+  const setSubtaskDate = useStore((s) => s.setSubtaskDate);
   const pins = useStore((s) => s.pins[date]);
   const setPin = useStore((s) => s.setPin);
   const setTravel = useStore((s) => s.setTravel);
@@ -297,8 +298,12 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
                     type="button"
                     className="btn btn--sm"
                     onClick={() => {
-                      moveTask(t.id, addDays(date, 1));
-                      showToast('Movida a mañana');
+                      const tomorrow = addDays(date, 1);
+                      const subs = plan.overflow.filter((o) => o.taskId === t.id && o.subtaskId);
+                      // Las subtareas que no alcanzan pasan a mañana; lo que sí cabe hoy se queda.
+                      if (subs.length > 0) subs.forEach((o) => setSubtaskDate(t.id, o.subtaskId!, tomorrow));
+                      else moveTask(t.id, tomorrow);
+                      showToast(subs.length > 1 ? 'Subtareas movidas a mañana' : subs.length === 1 ? 'Subtarea movida a mañana' : 'Movida a mañana');
                     }}
                   >
                     A mañana
@@ -463,7 +468,14 @@ function WorkCard({ placement, task, date, courseName, short, running, dragging,
   const openTimeLog = useUI((s) => s.openTimeLog);
   if (!task) return null;
   const dur = placement.end - placement.start;
-  const urgentLabel = task.deadline && task.deadline <= date ? 'Entrega hoy' : unit.tier === 0 ? 'Sí o sí hoy' : unit.tier === 1 ? 'Vence mañana' : null;
+  const urgentLabel =
+    task.deadline && task.deadline <= date
+      ? 'Entrega hoy'
+      : unit.tier === 0
+        ? 'Sí o sí hoy'
+        : task.deadline === addDays(date, 1)
+          ? 'Vence mañana'
+          : null;
 
   return (
     <div

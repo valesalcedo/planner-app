@@ -82,6 +82,8 @@ interface Actions {
   setTaskDone: (id: string, done: boolean) => void;
   setSubtaskDone: (taskId: string, subtaskId: string, done: boolean) => void;
   moveTask: (id: string, date: ISODate) => void;
+  /** Elige el día de una subtarea (sin fecha vuelve al reparto automático). */
+  setSubtaskDate: (taskId: string, subtaskId: string, date?: ISODate) => void;
 
   startTimer: (taskId: string, subtaskId?: string) => void;
   /** Detiene el cronómetro, guarda el registro y suma estrellas. Devuelve las estrellas ganadas. */
@@ -287,6 +289,15 @@ export const useStore = create<Store>()(
         },
 
         moveTask: (id, date) => get().updateTask(id, { date }),
+
+        setSubtaskDate: (taskId, subtaskId, date) =>
+          set((s) => ({
+            tasks: s.tasks.map((t) =>
+              t.id === taskId
+                ? { ...t, subtasks: t.subtasks.map((st) => (st.id === subtaskId ? { ...st, date } : st)) }
+                : t,
+            ),
+          })),
 
         startTimer: (taskId, subtaskId) => {
           if (get().activeTimer) get().stopTimer();

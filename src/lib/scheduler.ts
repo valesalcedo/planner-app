@@ -21,6 +21,7 @@
  */
 import type {
   CalendarEvent,
+  Subtask,
   Difficulty,
   ISODate,
   Settings,
@@ -50,7 +51,7 @@ export interface WorkUnit {
   taskTitle: string;
   remainingMin: number;
   difficulty: Difficulty;
-  /** 0 = vence hoy u obligatoria, 1 = vence mañana, 2 = flexible. */
+  /** 0 = vence hoy u obligatoria, 1 = vence mañana o le toca este día en el reparto, 2 = flexible. */
   tier: 0 | 1 | 2;
   /** Orden dentro de la tarea, para respetar la secuencia de subtareas. */
   order: number;
@@ -214,6 +215,18 @@ export function loggedMinutes(entries: TimeEntry[]): { byTask: Map<string, numbe
   return { byTask, bySub };
 }
 
+/** Día que le toca a cada subtarea repartida entre varios días (ver spread.ts): id → fecha. */
+export type SubtaskDays = Map<string, ISODate>;
+
+/**
+ * Día en que toca una subtarea pendiente: el que elegiste a mano, el del reparto o el de la tarea.
+ * Lo atrasado toca hoy.
+ */
+export function subtaskDay(task: Task, sub: Subtask, days: SubtaskDays, today: ISODate): ISODate {
+  const d = sub.date ?? days.get(sub.id) ?? task.date;
+  return d > today ? d : today;
+}
+
 export function tierOf(task: Task, date: ISODate): 0 | 1 | 2 {
   if (task.mustToday && task.date <= date) return 0;
   if (task.deadline && task.deadline <= date) return 0;
@@ -221,16 +234,29 @@ export function tierOf(task: Task, date: ISODate): 0 | 1 | 2 {
   return 2;
 }
 
-/** Tareas pendientes de ese día (incluye las atrasadas) convertidas en unidades de trabajo. */
-export function buildUnits(tasks: Task[], entries: TimeEntry[], date: ISODate): WorkUnit[] {
+/**
+ * Tareas pendientes de ese día (incluye las atrasadas) convertidas en unidades de trabajo.
+ * Las subtareas solo entran el día que les toca (`days` y `today` vienen del reparto entre días).
+ */
+export function buildUnits(
+  tasks: Task[],
+  entries: TimeEntry[],
+  date: ISODate,
+  opts: { days?: SubtaskDays; today?: ISODate } = {},
+): WorkUnit[] {
   const { byTask, bySub } = loggedMinutes(entries);
+  const days = opts.days ?? new Map();
+  const today = opts.today ?? date;
   const units: WorkUnit[] = [];
   for (const t of tasks) {
-    if (t.done || t.date > date) continue;
+    if (t.done) continue;
     const tier = tierOf(t, date);
     const pending = t.subtasks.filter((s) => !s.done);
     if (t.subtasks.length > 0 && pending.length > 0) {
       pending.forEach((s, i) => {
+        if (subtaskDay(t, s, days, today) !== date) return;
+        // Lo que se repartió para este día (o elegiste a mano) va antes que lo flexible.
+        const planned = !!s.date || days.has(s.id);
         units.push({
           key: `${t.id}:${s.id}`,
           taskId: t.id,
@@ -239,12 +265,13 @@ export function buildUnits(tasks: Task[], entries: TimeEntry[], date: ISODate): 
           taskTitle: t.title,
           remainingMin: remaining(s.estimateMin, bySub.get(s.id) ?? 0),
           difficulty: t.difficulty,
-          tier,
+          tier: planned && tier === 2 ? 1 : tier,
           order: i,
           onTheGo: !!t.onTheGo,
         });
       });
     } else {
+      if ((t.date > today ? t.date : today) !== date) continue;
       units.push({
         key: t.id,
         taskId: t.id,
