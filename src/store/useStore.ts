@@ -20,6 +20,7 @@ import type {
   WeeklyBlock,
 } from '../types';
 import { uid } from '../lib/id';
+import type { Unlock } from '../lib/achievements';
 import { balanceOf, bonusFor, classRef, computeStreak, multiplierFor, starsForFocus } from '../lib/rewards';
 import { hhmmToMin, toISODate, today, tsAt } from '../lib/time';
 import { isExpired, lostTasks } from '../lib/trash';
@@ -61,6 +62,8 @@ function pickData(s: AppData): AppData {
     pins: s.pins,
     rewards: s.rewards,
     stars: s.stars,
+    achievements: s.achievements,
+    surveyWeeks: s.surveyWeeks,
     settings: s.settings,
   };
 }
@@ -122,6 +125,11 @@ interface Actions {
   redeem: (rewardId: string) => boolean;
   /** Quita un movimiento del historial de estrellas (para corregir errores). */
   deleteStarTx: (id: string) => void;
+
+  /** Registra logros recién ganados y da sus estrellas (una sola vez por nivel). */
+  unlockAchievements: (unlocks: Unlock[]) => void;
+  /** Anota que copiaste la carga académica esta semana. */
+  logSurveyCopy: (weekStart: ISODate) => void;
 
   updateSettings: (patch: Partial<Settings>) => void;
   importData: (data: AppData) => void;
@@ -425,6 +433,19 @@ export const useStore = create<Store>()(
           return true;
         },
         deleteStarTx: (id) => set((s) => ({ stars: s.stars.filter((t) => t.id !== id) })),
+
+        unlockAchievements: (unlocks) => {
+          const fresh = unlocks.filter((u) => (get().achievements[u.id] ?? 0) < u.level);
+          if (fresh.length === 0) return;
+          set((s) => {
+            const achievements = { ...s.achievements };
+            for (const u of fresh) achievements[u.id] = Math.max(achievements[u.id] ?? 0, u.level);
+            return { achievements };
+          });
+          for (const u of fresh) award(u.stars, `Logro: ${u.title}`, 'logro', `${u.id}:${u.level}`);
+        },
+        logSurveyCopy: (weekStart) =>
+          set((s) => (s.surveyWeeks.includes(weekStart) ? {} : { surveyWeeks: [...s.surveyWeeks, weekStart] })),
 
         updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
         importData: (data) => set(withDefaults(data)),

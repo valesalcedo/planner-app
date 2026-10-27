@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import type { ISODate } from '../types';
 
-export type Tab = 'hoy' | 'calendario' | 'foco' | 'stats' | 'tienda';
+export type Tab = 'hoy' | 'calendario' | 'foco' | 'stats' | 'menu' | 'tienda' | 'logros';
+/** Vista de la pestaña Semana. */
+export type StatsView = 'progreso' | 'resumen';
 export type Page = 'ajustes' | 'horario' | 'papelera' | null;
 
 interface TaskFormState {
@@ -21,6 +23,9 @@ export interface ToastAction {
 interface UIState {
   tab: Tab;
   page: Page;
+  /** A dónde vuelve el botón "Volver" de la página abierta. */
+  pageBack: Page;
+  statsView: StatsView;
   taskForm: TaskFormState | null;
   /** Hoja para agregar tiempo a mano. */
   timeLog: TimeLogState | null;
@@ -28,7 +33,9 @@ interface UIState {
   /** Botón opcional del aviso (por ejemplo, "Deshacer"). */
   toastAction: ToastAction | null;
   setTab: (tab: Tab) => void;
-  openPage: (page: Page) => void;
+  /** Abre una página. `back` es a dónde vuelve (por defecto, a la pestaña). */
+  openPage: (page: Page, back?: Page) => void;
+  setStatsView: (view: StatsView) => void;
   openTaskForm: (state?: TaskFormState) => void;
   closeTaskForm: () => void;
   openTimeLog: (state?: TimeLogState) => void;
@@ -43,6 +50,8 @@ let toastTimer: ReturnType<typeof setTimeout> | undefined;
 export const useUI = create<UIState>()((set) => ({
   tab: 'hoy',
   page: null,
+  pageBack: null,
+  statsView: 'progreso',
   taskForm: null,
   timeLog: null,
   toast: null,
@@ -51,8 +60,12 @@ export const useUI = create<UIState>()((set) => ({
     set({ tab, page: null });
     window.scrollTo({ top: 0 });
   },
-  openPage: (page) => {
-    set({ page });
+  openPage: (page, back = null) => {
+    set({ page, pageBack: back });
+    window.scrollTo({ top: 0 });
+  },
+  setStatsView: (statsView) => {
+    set({ statsView });
     window.scrollTo({ top: 0 });
   },
   openTaskForm: (state = {}) => set({ taskForm: state }),
