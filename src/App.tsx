@@ -1,6 +1,9 @@
 import { BottomNav } from './components/BottomNav';
+import { useAchievementWatcher } from './hooks/useAchievements';
+import { AchievementsScreen } from './screens/achievements/AchievementsScreen';
 import { CalendarScreen } from './screens/calendar/CalendarScreen';
 import { FocusScreen } from './screens/focus/FocusScreen';
+import { MenuScreen } from './screens/menu/MenuScreen';
 import { ScheduleScreen } from './screens/schedule/ScheduleScreen';
 import { SettingsScreen } from './screens/settings/SettingsScreen';
 import { ShopScreen } from './screens/shop/ShopScreen';
@@ -16,7 +19,9 @@ const TABS = {
   calendario: CalendarScreen,
   foco: FocusScreen,
   stats: StatsScreen,
+  menu: MenuScreen,
   tienda: ShopScreen,
+  logros: AchievementsScreen,
 };
 
 export function App() {
@@ -27,6 +32,7 @@ export function App() {
   const toast = useUI((s) => s.toast);
   const toastAction = useUI((s) => s.toastAction);
   const hideToast = useUI((s) => s.hideToast);
+  useAchievementWatcher();
 
   const Screen = TABS[tab];
 

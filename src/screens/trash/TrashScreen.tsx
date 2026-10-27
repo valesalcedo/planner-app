@@ -23,6 +23,7 @@ export function TrashScreen() {
   const purgeTask = useStore((s) => s.purgeTask);
   const recoverLostTask = useStore((s) => s.recoverLostTask);
   const openPage = useUI((s) => s.openPage);
+  const pageBack = useUI((s) => s.pageBack);
   const showToast = useUI((s) => s.showToast);
 
   const lost = useMemo(() => lostTasks(tasks, trash, entries, stars), [tasks, trash, entries, stars]);
@@ -32,7 +33,7 @@ export function TrashScreen() {
   return (
     <div className="screen screen--no-nav">
       <header className="screen-header">
-        <button type="button" className="icon-btn" aria-label="Volver" onClick={() => openPage('ajustes')}>
+        <button type="button" className="icon-btn" aria-label="Volver" onClick={() => openPage(pageBack)}>
           <Icon name="back" />
         </button>
         <h1 className="title" style={{ fontSize: 24, flex: 1 }}>

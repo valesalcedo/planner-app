@@ -158,7 +158,7 @@ export interface Reward {
   price: number;
 }
 
-export type StarKind = 'foco' | 'tarea' | 'clase' | 'canje' | 'ajuste';
+export type StarKind = 'foco' | 'tarea' | 'clase' | 'canje' | 'ajuste' | 'logro';
 
 export interface StarTx {
   id: string;
@@ -226,5 +226,9 @@ export interface AppData {
   pins: Record<ISODate, Record<string, TaskPin>>;
   rewards: Reward[];
   stars: StarTx[];
+  /** Logros ganados: id del logro → cuántos niveles ya diste (las estrellas se dan una sola vez por nivel). */
+  achievements: Record<string, number>;
+  /** Lunes de cada semana en que copiaste la carga académica (para el logro "Encuestada"). */
+  surveyWeeks: ISODate[];
   settings: Settings;
 }

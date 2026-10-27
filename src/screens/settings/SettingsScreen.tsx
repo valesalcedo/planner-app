@@ -164,7 +164,7 @@ export function SettingsScreen() {
         </form>
       </section>
 
-      <button type="button" className="card row row--between" style={{ border: 'none', minHeight: 56, textAlign: 'left' }} onClick={() => openPage('horario')}>
+      <button type="button" className="card row row--between" style={{ border: 'none', minHeight: 56, textAlign: 'left' }} onClick={() => openPage('horario', 'ajustes')}>
         <span className="stack" style={{ gap: 0 }}>
           <span style={{ fontWeight: 800 }}>Horario semanal</span>
           <span className="small muted">Clases y actividades fijas</span>
@@ -264,7 +264,7 @@ export function SettingsScreen() {
         </div>
       </section>
 
-      <button type="button" className="card row row--between" style={{ border: 'none', minHeight: 56, textAlign: 'left' }} onClick={() => openPage('papelera')}>
+      <button type="button" className="card row row--between" style={{ border: 'none', minHeight: 56, textAlign: 'left' }} onClick={() => openPage('papelera', 'ajustes')}>
         <span className="stack" style={{ gap: 0 }}>
           <span style={{ fontWeight: 800 }}>Papelera</span>
           <span className="small muted">

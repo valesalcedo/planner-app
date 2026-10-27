@@ -19,6 +19,7 @@ export function ShopScreen() {
   const deleteStarTx = useStore((s) => s.deleteStarTx);
   const [showAll, setShowAll] = useState(false);
   const showToast = useUI((s) => s.showToast);
+  const setTab = useUI((s) => s.setTab);
   const [editing, setEditing] = useState<Reward | 'new' | null>(null);
 
   const history = [...stars].reverse().slice(0, showAll ? undefined : 12);
@@ -26,7 +27,10 @@ export function ShopScreen() {
 
   return (
     <div className="screen">
-      <header className="screen-header">
+      <header className="screen-header" style={{ justifyContent: 'flex-start' }}>
+        <button type="button" className="icon-btn" aria-label="Volver al menú" onClick={() => setTab('menu')}>
+          <Icon name="back" />
+        </button>
         <h1 className="title">Tienda de permisos</h1>
       </header>
 

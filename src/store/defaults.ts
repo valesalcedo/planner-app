@@ -58,6 +58,8 @@ export function initialData(): AppData {
       { id: 'r-tarde', name: 'Tarde libre', price: 600 },
     ],
     stars: [],
+    achievements: {},
+    surveyWeeks: [],
     settings: DEFAULT_SETTINGS,
   };
 }

@@ -12,13 +12,14 @@ import type { BlockKind, WeeklyBlock } from '../../types';
 export function ScheduleScreen() {
   const weekly = useStore((s) => s.weekly);
   const openPage = useUI((s) => s.openPage);
+  const pageBack = useUI((s) => s.pageBack);
   const { course, category, blockColor } = useLookups();
   const [editing, setEditing] = useState<WeeklyBlock | 'new' | null>(null);
 
   return (
     <div className="screen screen--no-nav">
       <header className="screen-header">
-        <button type="button" className="icon-btn" aria-label="Volver" onClick={() => openPage(null)}>
+        <button type="button" className="icon-btn" aria-label="Volver" onClick={() => openPage(pageBack)}>
           <Icon name="back" />
         </button>
         <h1 className="title" style={{ fontSize: 24, flex: 1 }}>

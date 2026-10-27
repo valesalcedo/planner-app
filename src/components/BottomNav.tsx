@@ -8,8 +8,11 @@ const ITEMS: { tab: Tab; label: string; icon: IconName }[] = [
   { tab: 'calendario', label: 'Calendario', icon: 'calendar' },
   { tab: 'foco', label: 'Foco', icon: 'timer' },
   { tab: 'stats', label: 'Semana', icon: 'chart' },
-  { tab: 'tienda', label: 'Tienda', icon: 'bag' },
+  { tab: 'menu', label: 'Menú', icon: 'grid' },
 ];
+
+/** Tienda y Logros se abren desde el Menú, así que el Menú queda marcado. */
+const SECTION: Partial<Record<Tab, Tab>> = { tienda: 'menu', logros: 'menu' };
 
 export function BottomNav() {
   const tab = useUI((s) => s.tab);
@@ -20,7 +23,7 @@ export function BottomNav() {
   return (
     <nav className={styles.nav} aria-label="Secciones">
       {ITEMS.map((item) => {
-        const active = tab === item.tab && page === null;
+        const active = (SECTION[tab] ?? tab) === item.tab && page === null;
         return (
           <button
             key={item.tab}

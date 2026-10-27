@@ -11,10 +11,12 @@ Es una PWA (app web instalable): se publica gratis en GitHub Pages y se agrega a
 - **Reparto entre días**: si una tarea tiene fecha de inicio, fecha de entrega y subtareas, las subtareas se reparten solas entre esos días según tu tiempo libre. Si una no cabe en un día pasa al siguiente, y lo que no alcanzaste se vuelve a repartir. También puedes elegir a mano el día de cada subtarea.
 - **Foco**: cronómetro por tarea o subtarea. Sigue contando aunque cierres la app, porque guarda la hora de inicio.
 - **Calendario** con evaluaciones, entregas y eventos, más tu horario semanal de clases.
-- **Semana**: horas de foco por día, tareas hechas y una tabla de **carga académica** por ramo y tipo de actividad, con botón para copiarla. Úsala con "Semana pasada" cuando llenes la encuesta.
+- **Semana**: abre en **Progreso**, con un anillo grande del % de tareas completadas, tus horas de foco y la comparación con la semana pasada, más un anillo por ramo. Al tocar un ramo ves en qué se fue el tiempo, tu asistencia, la próxima evaluación y lo que te falta. En **Resumen** están las horas de foco por día, tareas hechas y la tabla de **carga académica** por ramo y tipo de actividad, con botón para copiarla. Úsala con "Semana pasada" cuando llenes la encuesta.
 - **Asistencia**: en Hoy marcas cada clase como "Fui", "Falté" o "No hubo". Ir a clases suma estrellas y en Semana ves tu porcentaje de asistencia por ramo.
 - **Colores**: cada ramo y cada categoría de actividad (coro, salidas, etc.) tiene su color, de la paleta o elegido a mano, y así se pintan en el horario y en tu día.
 - **Tienda de permisos**: 1 estrella por minuto de foco, bono por tarea terminada según dificultad, estrellas por ir a clases y multiplicador por racha. Los premios y precios los defines tú.
+- **Menú**: la última pestaña. Desde ahí entras a la Tienda, a tus Logros, al tema de colores, al horario semanal, a Ajustes y a la Papelera.
+- **Logros**: 22 medallas en seis grupos (clases, foco, tareas, rachas, ramos y hábitos), algunas con niveles bronce, plata y oro. Se calculan solas con tus datos, cada nivel da estrellas una sola vez y nunca se pierden.
 - **Temas**: en Ajustes cada persona elige los colores de toda la app: 9 temas listos (incluidos dos oscuros) o uno propio con su color principal, su acento y modo oscuro. Los datos y el tema viven en cada teléfono, así que cada amiga tiene el suyo.
 - **Ajustes**: ramos, tipos de actividad, horario del día, reglas de estrellas y respaldo (descargar e importar).
 
@@ -66,6 +68,8 @@ src/
 │   ├── scheduler.ts      Ordena las tareas en los huecos libres del día
 │   ├── rewards.ts        Rachas y cálculo de estrellas
 │   ├── stats.ts          Estadísticas semanales y carga académica
+│   ├── progress.ts       Avance de la semana y detalle por ramo
+│   ├── achievements.ts   Lista de logros y cómo se mide cada uno
 │   └── time.ts           Fechas y horas
 ├── store/
 │   ├── useStore.ts       Estado de la app (Zustand), guardado en localStorage

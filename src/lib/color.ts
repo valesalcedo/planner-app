@@ -89,3 +89,8 @@ export function vivid(hex: string, lightness = 0.5): string {
   const [r1, g1, b1] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
   return toHex([r1 + m, g1 + m, b1 + m].map((v) => v * 255));
 }
+
+/** Tono para el arco de un anillo sobre el color pastel del ramo: más vivo, sin llegar a chillón. */
+export function ringTone(hex: string): string {
+  return mix(hex, vivid(hex, 0.52), 0.65);
+}
