@@ -150,9 +150,10 @@ function notGoingSet(date: ISODate, attendance?: Record<ISODate, Record<string, 
 }
 
 /**
- * Traslados del día: solo los días con alguna clase a la que vas (no marcada "no hubo" ni "no voy").
- * La ida termina cuando empieza la primera clase y la vuelta parte cuando termina la última,
- * salvo que la hayas movido.
+ * Traslados del día: solo los días con alguna clase (no marcada "no hubo").
+ * Marcar "no voy" no los cambia: siguen a la misma hora, y si decides quedarte en tu casa
+ * los quitas a mano. La ida termina cuando empieza la primera clase y la vuelta parte
+ * cuando termina la última, salvo que la hayas movido.
  */
 export function travelBlocksFor(
   date: ISODate,
@@ -160,13 +161,12 @@ export function travelBlocksFor(
   skipped: Record<ISODate, string[]>,
   overrides: Partial<Record<TravelLeg, TravelOverride>> | undefined,
   settings: Pick<Settings, 'travelEnabled' | 'travelMin'>,
-  attendance?: Record<ISODate, Record<string, Attendance>>,
+  _attendance?: Record<ISODate, Record<string, Attendance>>,
 ): TravelBlock[] {
   if (!settings.travelEnabled || settings.travelMin <= 0) return [];
   const wd = weekdayOf(date);
   const skip = new Set(skipped[date] ?? []);
-  const notGoing = notGoingSet(date, attendance);
-  const classes = weekly.filter((b) => b.kind === 'clase' && b.weekday === wd && !skip.has(b.id) && !notGoing.has(b.id));
+  const classes = weekly.filter((b) => b.kind === 'clase' && b.weekday === wd && !skip.has(b.id));
   if (classes.length === 0) return [];
   const firstStart = Math.min(...classes.map((b) => hhmmToMin(b.start)));
   const lastEnd = Math.max(...classes.map((b) => hhmmToMin(b.end)));

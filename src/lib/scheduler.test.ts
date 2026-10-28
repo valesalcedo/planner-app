@@ -214,10 +214,16 @@ describe('clases marcadas "no voy"', () => {
     expect(plan.placements[0].start).toBeLessThan(9 * 60);
   });
 
-  it('el traslado se arma solo con las clases a las que vas', () => {
-    const travel = travelBlocksFor(DAY, classes, {}, undefined, { travelEnabled: true, travelMin: 60 }, { [DAY]: { c1: 'falte' } });
-    expect(travel.find((t) => t.leg === 'ida')?.end).toBe(10 * 60 + 20);
-    const none = travelBlocksFor(DAY, classes, {}, undefined, { travelEnabled: true, travelMin: 60 }, { [DAY]: { c1: 'falte', c2: 'falte' } });
-    expect(none).toEqual([]);
+  it('no cambian el traslado: queda igual hasta que lo quites', () => {
+    const s = { travelEnabled: true, travelMin: 60 };
+    const normal = travelBlocksFor(DAY, classes, {}, undefined, s);
+    const oneOff = travelBlocksFor(DAY, classes, {}, undefined, s, { [DAY]: { c1: 'falte' } });
+    const allOff = travelBlocksFor(DAY, classes, {}, undefined, s, { [DAY]: { c1: 'falte', c2: 'falte' } });
+    expect(oneOff).toEqual(normal);
+    expect(allOff).toEqual(normal);
+    const home = travelBlocksFor(DAY, classes, {}, { ida: { removed: true }, vuelta: { removed: true } }, s, {
+      [DAY]: { c1: 'falte', c2: 'falte' },
+    });
+    expect(home.every((t) => t.removed)).toBe(true);
   });
 });
