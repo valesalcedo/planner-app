@@ -90,7 +90,8 @@ export function courseDetail(data: ProgressInput, courseId: string, now = Date.n
     .flatMap(([date, day]) =>
       Object.entries(day).flatMap(([blockId, mark]) => {
         const b = blocks.get(blockId);
-        return b ? [{ key: `${date} ${b.start}`, mark }] : [];
+        // Un "no voy" marcado antes de la clase cuenta recién cuando la clase termina.
+        return b && tsAt(date, hhmmToMin(b.end)) <= now ? [{ key: `${date} ${b.start}`, mark }] : [];
       }),
     )
     .sort((a, b) => (a.key < b.key ? -1 : 1))

@@ -218,6 +218,17 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
                   color={colorOf(row.kind, row.sourceId)}
                   range={`${minToHHMM(row.start)}–${minToHHMM(row.end)}`}
                   onSkip={row.kind === 'evento' ? undefined : () => skipClass(row.sourceId, row.title)}
+                  notGoing={
+                    row.kind === 'clase' && tsAt(date, row.start) > now
+                      ? {
+                          value: attendance?.[row.sourceId] === 'falte',
+                          onChange: (v) => {
+                            setAttendance(date, row.sourceId, v ? 'falte' : null);
+                            showToast(v ? `Anotado: no vas a ${row.title}` : `Listo: vas a ${row.title}`);
+                          },
+                        }
+                      : undefined
+                  }
                   attendance={
                     row.kind === 'clase' && tsAt(date, row.start) <= now
                       ? {
@@ -401,18 +412,31 @@ interface BusyCardProps {
   onSkip?: () => void;
   /** Solo clases que ya empezaron: marcar si fuiste. */
   attendance?: { value: Attendance | null; stars: number; onChange: (v: Attendance) => void };
+  /** Solo clases que todavía no empiezan: avisar de antemano que no vas. */
+  notGoing?: { value: boolean; onChange: (v: boolean) => void };
 }
 
 const DEFAULT_BG: Record<string, string> = { clase: '#DCD6F7', actividad: '#C9EBD8', evento: '#FDE68A' };
 
-function BusyCard({ title, kind, color, range, onSkip, attendance }: BusyCardProps) {
+function BusyCard({ title, kind, color, range, onSkip, attendance, notGoing }: BusyCardProps) {
   const bg = color ?? DEFAULT_BG[kind] ?? DEFAULT_BG.clase;
   const ink = inkOn(bg);
   const label = kind === 'clase' ? 'Clase' : kind === 'actividad' ? 'Actividad' : 'Evento';
-  const status = attendance?.value === 'fui' ? ' · fuiste' : attendance?.value === 'falte' ? ' · faltaste' : '';
+  const status = notGoing?.value
+    ? ' · no vas'
+    : attendance?.value === 'fui'
+      ? ' · fuiste'
+      : attendance?.value === 'falte'
+        ? ' · faltaste'
+        : '';
 
   return (
-    <div className={styles.block} style={{ background: bg, color: ink }} data-drop="busy" data-title={kind === 'clase' ? 'clase' : title}>
+    <div
+      className={`${styles.block} ${notGoing?.value ? styles.notGoing : ''}`}
+      style={{ background: bg, color: ink }}
+      data-drop="busy"
+      data-title={kind === 'clase' ? 'clase' : title}
+    >
       <div className={styles.blockHead}>
         <div className="stack" style={{ gap: 0, minWidth: 0 }}>
           <span className={styles.blockTitle}>{title}</span>
@@ -421,12 +445,30 @@ function BusyCard({ title, kind, color, range, onSkip, attendance }: BusyCardPro
             {status}
           </span>
         </div>
-        {onSkip && !attendance && (
+        {onSkip && !attendance && !notGoing && (
           <button type="button" className={`btn btn--sm ${styles.blockBtn}`} onClick={onSkip}>
             No hay
           </button>
         )}
       </div>
+      {notGoing && (
+        <div className={`${styles.attend} ${onSkip ? styles.attendTwo : ''}`} role="group" aria-label={`Asistencia a ${title}`}>
+          {notGoing.value ? (
+            <button type="button" className={styles.attendBtn} onClick={() => notGoing.onChange(false)}>
+              <Icon name="check" size={16} strokeWidth={3} /> Sí voy
+            </button>
+          ) : (
+            <button type="button" className={styles.attendBtn} onClick={() => notGoing.onChange(true)}>
+              No voy
+            </button>
+          )}
+          {onSkip && (
+            <button type="button" className={styles.attendBtn} onClick={onSkip}>
+              No hay
+            </button>
+          )}
+        </div>
+      )}
       {attendance && (
         <div className={styles.attend} role="group" aria-label={`Asistencia a ${title}`}>
           <button type="button" className={styles.attendBtn} aria-pressed={attendance.value === 'fui'} onClick={() => attendance.onChange('fui')}>

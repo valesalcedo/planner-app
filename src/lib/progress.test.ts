@@ -54,4 +54,12 @@ describe('courseDetail', () => {
     expect(d.currentRun).toBe(2);
     expect(d.nextEval?.id).toBe('i2');
   });
+
+  it('un "no voy" marcado antes de la clase no corta la racha hasta que la clase termina', () => {
+    const data = initialData();
+    data.weekly = [{ id: 'b', title: 'Alg', kind: 'clase', weekday: 0, start: '10:00', end: '11:20', courseId: 'alg' }];
+    data.attendance = { '2026-10-26': { b: 'fui' }, '2026-11-02': { b: 'falte' } };
+    expect(courseDetail(data, 'alg', NOW).currentRun).toBe(1);
+    expect(courseDetail(data, 'alg', tsAt('2026-11-02', 12 * 60)).currentRun).toBe(0);
+  });
 });

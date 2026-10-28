@@ -108,6 +108,8 @@ export function measure(data: AchievementInput, now = Date.now()): Record<string
     .flatMap(([date, day]) =>
       Object.entries(day).map(([blockId, mark]) => ({ date, mark, block: blocks.get(blockId) })),
     )
+    // Un "no voy" marcado antes de la clase cuenta recién cuando la clase termina.
+    .filter((m) => !m.block || tsAt(m.date, hhmmToMin(m.block.end)) <= now)
     .sort((a, b) =>
       a.date === b.date ? hhmmToMin(a.block?.start ?? '00:00') - hhmmToMin(b.block?.start ?? '00:00') : a.date < b.date ? -1 : 1,
     );
