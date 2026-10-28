@@ -104,11 +104,6 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-/* Clase a la que avisaste que no vas: se queda en su hora, pero más apagada. */
-.notGoing {
-  opacity: 0.6;
-}
-
 .attendBtn {
   min-height: 40px;
   border: none;

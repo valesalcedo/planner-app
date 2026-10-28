@@ -85,13 +85,15 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
   const skippedBlocks = weekly
     .filter((b) => b.weekday === weekdayOf(date) && (skipped ?? []).includes(b.id))
     .sort((a, b) => hhmmToMin(a.start) - hhmmToMin(b.start));
+  // Clases a las que no vas (o faltaste): tampoco se dibujan; se restauran desde el mismo lugar.
+  const notGoingBlocks = plan.busy.filter((b) => b.free);
   const removedTravel = plan.travel.filter((t) => t.removed);
   const travelLegs = plan.travel.filter((t) => !t.removed);
   // Lo que terminaste mientras ibas en un traslado se queda adentro de su tarjeta.
   const travelLegOf = (b: DoneBlock) => travelLegs.find((t) => b.start >= t.start && b.start < t.end)?.leg;
   const doneInTravel = (leg: TravelBlock['leg']) => doneBlocks.filter((b) => travelLegOf(b) === leg);
   const rows: Row[] = [
-    ...plan.busy.map((b) => ({ type: 'busy' as const, start: b.start, end: b.end, title: b.title, kind: b.kind, sourceId: b.sourceId })),
+    ...plan.busy.filter((b) => !b.free).map((b) => ({ type: 'busy' as const, start: b.start, end: b.end, title: b.title, kind: b.kind, sourceId: b.sourceId })),
     ...travelLegs.map((b) => ({ type: 'travel' as const, start: b.start, end: b.end, block: b })),
     // Lo que va dentro de un traslado se muestra adentro de su tarjeta.
     ...plan.placements.filter((p) => !p.travel).map((p) => ({ type: 'work' as const, start: p.start, end: p.end, placement: p })),
@@ -103,7 +105,7 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
     toggleSkip(date, id);
     showToast(`Quitada: ${title}. Puedes restaurarla al final del día`);
   };
-  const removedCount = skippedBlocks.length + removedTravel.length;
+  const removedCount = skippedBlocks.length + notGoingBlocks.length + removedTravel.length;
 
   const pinUnit = (key: string, pin: TaskPin | null) => {
     setPin(date, key, pin);
@@ -217,16 +219,12 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
                   kind={row.kind}
                   color={colorOf(row.kind, row.sourceId)}
                   range={`${minToHHMM(row.start)}–${minToHHMM(row.end)}`}
-                  startMin={row.start}
                   onSkip={row.kind === 'evento' ? undefined : () => skipClass(row.sourceId, row.title)}
-                  notGoing={
+                  onNotGoing={
                     row.kind === 'clase' && tsAt(date, row.start) > now
-                      ? {
-                          value: attendance?.[row.sourceId] === 'falte',
-                          onChange: (v) => {
-                            setAttendance(date, row.sourceId, v ? 'falte' : null);
-                            showToast(v ? `Anotado: no vas a ${row.title}` : `Listo: vas a ${row.title}`);
-                          },
+                      ? () => {
+                          setAttendance(date, row.sourceId, 'falte');
+                          showToast(`No vas a ${row.title}. Puedes restaurarla al final del día`);
                         }
                       : undefined
                   }
@@ -239,6 +237,7 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
                             const prev = attendance?.[row.sourceId] ?? null;
                             const next = prev === v ? null : v;
                             setAttendance(date, row.sourceId, next);
+                            if (next === 'falte') showToast(`Faltaste a ${row.title}. Puedes restaurarla al final del día`);
                             if (next === 'fui' && starsPerClass > 0) showToast(`¡Bien! +${starsPerClass} estrellas por ir a clases`);
                           },
                         }
@@ -367,6 +366,23 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
                 </button>
               </li>
             ))}
+            {notGoingBlocks.map((b) => (
+              <li key={`ng-${b.sourceId}`} className={styles.removedItem}>
+                <span className={styles.removedText}>
+                  {b.title} · {minToHHMM(b.start)}–{minToHHMM(b.end)} · {tsAt(date, b.start) > now ? 'no vas' : 'faltaste'}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn--sm"
+                  onClick={() => {
+                    setAttendance(date, b.sourceId, null);
+                    showToast(`Restaurada: ${b.title}`);
+                  }}
+                >
+                  Restaurar
+                </button>
+              </li>
+            ))}
             {removedTravel.map((t) => (
               <li key={t.leg} className={styles.removedItem}>
                 <span className={styles.removedText}>{TRAVEL_TITLE[t.leg]}</span>
@@ -409,38 +425,24 @@ interface BusyCardProps {
   kind: string;
   color?: string;
   range: string;
-  startMin: number;
   /** Quitarla de este día ("no hay" / "no hubo"). */
   onSkip?: () => void;
   /** Solo clases que ya empezaron: marcar si fuiste. */
   attendance?: { value: Attendance | null; stars: number; onChange: (v: Attendance) => void };
   /** Solo clases que todavía no empiezan: avisar de antemano que no vas. */
-  notGoing?: { value: boolean; onChange: (v: boolean) => void };
+  onNotGoing?: () => void;
 }
 
 const DEFAULT_BG: Record<string, string> = { clase: '#DCD6F7', actividad: '#C9EBD8', evento: '#FDE68A' };
 
-function BusyCard({ title, kind, color, range, startMin, onSkip, attendance, notGoing }: BusyCardProps) {
+function BusyCard({ title, kind, color, range, onSkip, attendance, onNotGoing }: BusyCardProps) {
   const bg = color ?? DEFAULT_BG[kind] ?? DEFAULT_BG.clase;
   const ink = inkOn(bg);
   const label = kind === 'clase' ? 'Clase' : kind === 'actividad' ? 'Actividad' : 'Evento';
-  const status = notGoing?.value
-    ? ' · no vas'
-    : attendance?.value === 'fui'
-      ? ' · fuiste'
-      : attendance?.value === 'falte'
-        ? ' · faltaste'
-        : '';
+  const status = attendance?.value === 'fui' ? ' · fuiste' : '';
 
   return (
-    <div
-      className={`${styles.block} ${notGoing?.value ? styles.notGoing : ''}`}
-      style={{ background: bg, color: ink }}
-      // Si no vas, su hora está libre: se pueden soltar tareas encima.
-      data-drop={notGoing?.value ? 'time' : 'busy'}
-      data-min={notGoing?.value ? startMin : undefined}
-      data-title={kind === 'clase' ? 'clase' : title}
-    >
+    <div className={styles.block} style={{ background: bg, color: ink }} data-drop="busy" data-title={kind === 'clase' ? 'clase' : title}>
       <div className={styles.blockHead}>
         <div className="stack" style={{ gap: 0, minWidth: 0 }}>
           <span className={styles.blockTitle}>{title}</span>
@@ -449,23 +451,17 @@ function BusyCard({ title, kind, color, range, startMin, onSkip, attendance, not
             {status}
           </span>
         </div>
-        {onSkip && !attendance && !notGoing && (
+        {onSkip && !attendance && !onNotGoing && (
           <button type="button" className={`btn btn--sm ${styles.blockBtn}`} onClick={onSkip}>
             No hay
           </button>
         )}
       </div>
-      {notGoing && (
+      {onNotGoing && (
         <div className={`${styles.attend} ${onSkip ? styles.attendTwo : ''}`} role="group" aria-label={`Asistencia a ${title}`}>
-          {notGoing.value ? (
-            <button type="button" className={styles.attendBtn} onClick={() => notGoing.onChange(false)}>
-              <Icon name="check" size={16} strokeWidth={3} /> Sí voy
-            </button>
-          ) : (
-            <button type="button" className={styles.attendBtn} onClick={() => notGoing.onChange(true)}>
-              No voy
-            </button>
-          )}
+          <button type="button" className={styles.attendBtn} onClick={onNotGoing}>
+            No voy
+          </button>
           {onSkip && (
             <button type="button" className={styles.attendBtn} onClick={onSkip}>
               No hay
