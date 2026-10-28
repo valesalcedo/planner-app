@@ -13,7 +13,7 @@
  *  - Se recalcula cada vez desde hoy: lo que no alcanzaste a hacer se vuelve a repartir
  *    entre los días que quedan.
  */
-import type { CalendarEvent, ISODate, Settings, Task, TimeEntry, TravelLeg, TravelOverride, WeeklyBlock } from '../types';
+import type { Attendance, CalendarEvent, ISODate, Settings, Task, TimeEntry, TravelLeg, TravelOverride, WeeklyBlock } from '../types';
 import { type SubtaskDays, busyBlocksFor, freeSlots, loggedMinutes, subtaskDay, travelBlocksFor } from './scheduler';
 import { addDays, hhmmToMin } from './time';
 
@@ -27,6 +27,8 @@ export interface SpreadContext {
   weekly: WeeklyBlock[];
   events: CalendarEvent[];
   skipped: Record<ISODate, string[]>;
+  /** Clases marcadas "no voy": su tiempo queda libre. */
+  attendance?: Record<ISODate, Record<string, Attendance>>;
   travel: Record<ISODate, Partial<Record<TravelLeg, TravelOverride>>>;
   settings: Pick<Settings, 'dayStart' | 'dayEnd' | 'bufferMin' | 'travelEnabled' | 'travelMin'>;
 }
@@ -66,8 +68,8 @@ function remainingMin(estimate: number, logged: number): number {
 
 /** Minutos libres de un día (sin clases, eventos ni traslados). */
 function freeMinutes(date: ISODate, ctx: SpreadContext): number {
-  const busy = busyBlocksFor(date, ctx.weekly, ctx.events, ctx.skipped);
-  const travel = travelBlocksFor(date, ctx.weekly, ctx.skipped, ctx.travel[date], ctx.settings)
+  const busy = busyBlocksFor(date, ctx.weekly, ctx.events, ctx.skipped, ctx.attendance).filter((b) => !b.free);
+  const travel = travelBlocksFor(date, ctx.weekly, ctx.skipped, ctx.travel[date], ctx.settings, ctx.attendance)
     .filter((t) => !t.removed)
     .map((t) => ({ id: `t-${t.leg}`, start: t.start, end: t.end, title: '', kind: 'actividad' as const, sourceId: t.leg }));
   const from = date === ctx.today ? ctx.nowMin : 0;

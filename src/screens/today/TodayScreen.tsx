@@ -28,6 +28,7 @@ export function TodayScreen() {
   const weekly = useStore((s) => s.weekly);
   const events = useStore((s) => s.events);
   const skipped = useStore((s) => s.skipped);
+  const attendance = useStore((s) => s.attendance);
   const settings = useStore((s) => s.settings);
   const travelOverrides = useStore((s) => s.travel[date]);
   const pins = useStore((s) => s.pins[date]);
@@ -57,9 +58,9 @@ export function TodayScreen() {
     // Un día que ya terminó no agenda nada: lo que quedó sin hacer pasa al día siguiente
     // (y así sigue hasta hoy), en vez de ocupar horas en que no se trabajó.
     const units = isPast ? [] : buildUnits(dayTasks, entries, date, { days: subDays, today: todayDate });
-    const travel = travelBlocksFor(date, weekly, skipped, travelOverrides, settings);
-    return planDay(units, busyBlocksFor(date, weekly, events, skipped), settings, fromMin, { travel, pins });
-  }, [dayTasks, entries, date, weekly, events, skipped, settings, isToday, isPast, now, travelOverrides, pins, subDays, todayDate]);
+    const travel = travelBlocksFor(date, weekly, skipped, travelOverrides, settings, attendance);
+    return planDay(units, busyBlocksFor(date, weekly, events, skipped, attendance), settings, fromMin, { travel, pins });
+  }, [dayTasks, entries, date, weekly, events, skipped, attendance, settings, isToday, isPast, now, travelOverrides, pins, subDays, todayDate]);
 
   const rolledOver = isPast ? dayTasks.filter((t) => !t.done).length : 0;
 

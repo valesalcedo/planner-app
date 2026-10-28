@@ -217,6 +217,7 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
                   kind={row.kind}
                   color={colorOf(row.kind, row.sourceId)}
                   range={`${minToHHMM(row.start)}–${minToHHMM(row.end)}`}
+                  startMin={row.start}
                   onSkip={row.kind === 'evento' ? undefined : () => skipClass(row.sourceId, row.title)}
                   notGoing={
                     row.kind === 'clase' && tsAt(date, row.start) > now
@@ -408,6 +409,7 @@ interface BusyCardProps {
   kind: string;
   color?: string;
   range: string;
+  startMin: number;
   /** Quitarla de este día ("no hay" / "no hubo"). */
   onSkip?: () => void;
   /** Solo clases que ya empezaron: marcar si fuiste. */
@@ -418,7 +420,7 @@ interface BusyCardProps {
 
 const DEFAULT_BG: Record<string, string> = { clase: '#DCD6F7', actividad: '#C9EBD8', evento: '#FDE68A' };
 
-function BusyCard({ title, kind, color, range, onSkip, attendance, notGoing }: BusyCardProps) {
+function BusyCard({ title, kind, color, range, startMin, onSkip, attendance, notGoing }: BusyCardProps) {
   const bg = color ?? DEFAULT_BG[kind] ?? DEFAULT_BG.clase;
   const ink = inkOn(bg);
   const label = kind === 'clase' ? 'Clase' : kind === 'actividad' ? 'Actividad' : 'Evento';
@@ -434,7 +436,9 @@ function BusyCard({ title, kind, color, range, onSkip, attendance, notGoing }: B
     <div
       className={`${styles.block} ${notGoing?.value ? styles.notGoing : ''}`}
       style={{ background: bg, color: ink }}
-      data-drop="busy"
+      // Si no vas, su hora está libre: se pueden soltar tareas encima.
+      data-drop={notGoing?.value ? 'time' : 'busy'}
+      data-min={notGoing?.value ? startMin : undefined}
       data-title={kind === 'clase' ? 'clase' : title}
     >
       <div className={styles.blockHead}>

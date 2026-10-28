@@ -202,3 +202,22 @@ describe('tareas fijadas', () => {
     ]);
   });
 });
+
+describe('clases marcadas "no voy"', () => {
+  it('se siguen mostrando, pero su tiempo queda libre para tareas', () => {
+    const attendance = { [DAY]: { c1: 'falte' as const } };
+    const busy = busyBlocksFor(DAY, classes, [], {}, attendance);
+    expect(busy.find((b) => b.sourceId === 'c1')?.free).toBe(true);
+    const units = buildUnits([task({ id: 't', title: 'Guía', estimateMin: 60 })], [], DAY);
+    const plan = planDay(units, busy, settings, 0);
+    expect(plan.busy.map((b) => b.sourceId)).toContain('c1');
+    expect(plan.placements[0].start).toBeLessThan(9 * 60);
+  });
+
+  it('el traslado se arma solo con las clases a las que vas', () => {
+    const travel = travelBlocksFor(DAY, classes, {}, undefined, { travelEnabled: true, travelMin: 60 }, { [DAY]: { c1: 'falte' } });
+    expect(travel.find((t) => t.leg === 'ida')?.end).toBe(10 * 60 + 20);
+    const none = travelBlocksFor(DAY, classes, {}, undefined, { travelEnabled: true, travelMin: 60 }, { [DAY]: { c1: 'falte', c2: 'falte' } });
+    expect(none).toEqual([]);
+  });
+});

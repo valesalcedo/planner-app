@@ -20,6 +20,7 @@
  * Todas las horas son minutos desde la medianoche, así la función es pura y testeable.
  */
 import type {
+  Attendance,
   CalendarEvent,
   Subtask,
   Difficulty,
@@ -41,6 +42,8 @@ export interface BusyBlock {
   title: string;
   kind: 'clase' | 'actividad' | 'evento';
   sourceId: string;
+  /** Clase a la que avisaste que no vas: se muestra, pero su tiempo queda libre. */
+  free?: boolean;
 }
 
 export interface WorkUnit {
@@ -116,9 +119,11 @@ export function busyBlocksFor(
   weekly: WeeklyBlock[],
   events: CalendarEvent[],
   skipped: Record<ISODate, string[]>,
+  attendance?: Record<ISODate, Record<string, Attendance>>,
 ): BusyBlock[] {
   const wd = weekdayOf(date);
   const skip = new Set(skipped[date] ?? []);
+  const notGoing = notGoingSet(date, attendance);
   const blocks: BusyBlock[] = weekly
     .filter((b) => b.weekday === wd && !skip.has(b.id))
     .map((b) => ({
@@ -128,6 +133,7 @@ export function busyBlocksFor(
       title: b.title,
       kind: b.kind,
       sourceId: b.id,
+      ...(b.kind === 'clase' && notGoing.has(b.id) ? { free: true } : {}),
     }));
   for (const e of events) {
     if (e.date !== date || !e.start) continue;
@@ -138,8 +144,13 @@ export function busyBlocksFor(
   return blocks.filter((b) => b.end > b.start).sort((a, b) => a.start - b.start);
 }
 
+/** Clases de ese día marcadas como "no voy" / "falté". */
+function notGoingSet(date: ISODate, attendance?: Record<ISODate, Record<string, Attendance>>): Set<string> {
+  return new Set(Object.entries(attendance?.[date] ?? {}).filter(([, m]) => m === 'falte').map(([id]) => id));
+}
+
 /**
- * Traslados del día: solo los días con alguna clase (que no se haya marcado "no hubo").
+ * Traslados del día: solo los días con alguna clase a la que vas (no marcada "no hubo" ni "no voy").
  * La ida termina cuando empieza la primera clase y la vuelta parte cuando termina la última,
  * salvo que la hayas movido.
  */
@@ -149,11 +160,13 @@ export function travelBlocksFor(
   skipped: Record<ISODate, string[]>,
   overrides: Partial<Record<TravelLeg, TravelOverride>> | undefined,
   settings: Pick<Settings, 'travelEnabled' | 'travelMin'>,
+  attendance?: Record<ISODate, Record<string, Attendance>>,
 ): TravelBlock[] {
   if (!settings.travelEnabled || settings.travelMin <= 0) return [];
   const wd = weekdayOf(date);
   const skip = new Set(skipped[date] ?? []);
-  const classes = weekly.filter((b) => b.kind === 'clase' && b.weekday === wd && !skip.has(b.id));
+  const notGoing = notGoingSet(date, attendance);
+  const classes = weekly.filter((b) => b.kind === 'clase' && b.weekday === wd && !skip.has(b.id) && !notGoing.has(b.id));
   if (classes.length === 0) return [];
   const firstStart = Math.min(...classes.map((b) => hhmmToMin(b.start)));
   const lastEnd = Math.max(...classes.map((b) => hhmmToMin(b.end)));
@@ -324,13 +337,15 @@ function subtract(base: Interval, cuts: Interval[]): Interval[] {
 
 export function planDay(
   units: WorkUnit[],
-  busy: BusyBlock[],
+  allBusy: BusyBlock[],
   settings: Pick<Settings, 'dayStart' | 'dayEnd' | 'bufferMin'>,
   fromMin = 0,
   extras: PlanExtras = {},
 ): DayPlan {
   const dayStart = hhmmToMin(settings.dayStart);
   const dayEnd = hhmmToMin(settings.dayEnd);
+  // Las clases a las que no vas se muestran, pero no ocupan tiempo.
+  const busy = allBusy.filter((b) => !b.free);
   const allTravel = extras.travel ?? [];
   const travel = allTravel.filter((t) => !t.removed);
   const pins = extras.pins ?? {};
@@ -469,7 +484,7 @@ export function planDay(
     .filter((g) => g.end - g.start >= 15);
 
   const overflow = pool.filter((u) => u.remainingMin > 0);
-  return { busy, travel: allTravel, slots, placements, gaps, overflow };
+  return { busy: allBusy, travel: allTravel, slots, placements, gaps, overflow };
 }
 
 /** Clave con que se fija una unidad de trabajo. */

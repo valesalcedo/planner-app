@@ -15,6 +15,7 @@ export function useSubtaskDays(now: number, draft?: Task): SubtaskDays {
   const weekly = useStore((s) => s.weekly);
   const events = useStore((s) => s.events);
   const skipped = useStore((s) => s.skipped);
+  const attendance = useStore((s) => s.attendance);
   const travel = useStore((s) => s.travel);
   const settings = useStore((s) => s.settings);
   const todayDate = today(new Date(now));
@@ -22,6 +23,6 @@ export function useSubtaskDays(now: number, draft?: Task): SubtaskDays {
   const nowMin = Math.floor(minutesOfDay(now) / 15) * 15;
   return useMemo(() => {
     const list = draft ? [...tasks.filter((t) => t.id !== draft.id), draft] : tasks;
-    return spreadSubtasks(list, { today: todayDate, nowMin, entries, weekly, events, skipped, travel, settings });
-  }, [tasks, draft, todayDate, nowMin, entries, weekly, events, skipped, travel, settings]);
+    return spreadSubtasks(list, { today: todayDate, nowMin, entries, weekly, events, skipped, attendance, travel, settings });
+  }, [tasks, draft, todayDate, nowMin, entries, weekly, events, skipped, attendance, travel, settings]);
 }
