@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { initialData } from '../store/defaults';
-import { NO_CATEGORY, NO_COURSE, weekStats } from './stats';
+import { NO_CATEGORY, NO_COURSE, loadKey, weekStats } from './stats';
 import { tsAt } from './time';
 
 describe('weekStats', () => {
@@ -61,5 +61,43 @@ describe('weekStats', () => {
     expect(s.personal.get('cat-orga')).toBe(60);
     expect(s.personal.get(NO_CATEGORY)).toBe(30);
     expect(s.personalTotal).toBe(90);
+  });
+
+  it('detalla qué suma cada fila de la carga académica', () => {
+    const data = initialData();
+    data.courses = [{ id: 'calc', name: 'Cálculo', color: '#fff' }];
+    data.weekly = [
+      { id: 'b', title: 'Cálculo cátedra', kind: 'clase', weekday: 0, start: '08:20', end: '09:50', courseId: 'calc', activityId: 'catedra' },
+      { id: 'b2', title: 'Cálculo cátedra', kind: 'clase', weekday: 2, start: '08:20', end: '09:50', courseId: 'calc', activityId: 'catedra' },
+    ];
+    data.tasks = [
+      { id: 't', title: 'Control 4', done: true } as never,
+    ];
+    data.entries = [
+      { id: 'e1', taskId: 't', courseId: 'calc', activityId: 'estudio', start: tsAt('2026-10-13', 600), end: tsAt('2026-10-13', 660) },
+      { id: 'e2', taskId: 't', courseId: 'calc', activityId: 'estudio', start: tsAt('2026-10-15', 600), end: tsAt('2026-10-15', 630), manual: true },
+      { id: 'e3', taskId: 'gone', courseId: 'calc', activityId: 'estudio', start: tsAt('2026-10-14', 600), end: tsAt('2026-10-14', 610) },
+    ];
+    data.skipped = {};
+    data.attendance = { '2026-10-14': { b2: 'falte' } };
+    const s = weekStats(data, '2026-10-12', tsAt('2026-10-20', 0));
+
+    const estudio = s.loadItems.get(loadKey('calc', 'estudio'))!;
+    expect(estudio.map((i) => [i.label, i.min, i.done, i.manualMin])).toEqual([
+      ['Control 4', 90, true, 30],
+      ['Tarea borrada', 10, false, 0],
+    ]);
+    expect(estudio[0].days).toEqual(['2026-10-13', '2026-10-15']);
+
+    const catedra = s.loadItems.get(loadKey('calc', 'catedra'))!;
+    expect(catedra).toHaveLength(1);
+    expect(catedra[0]).toMatchObject({ kind: 'clase', count: 1, min: 90 });
+
+    for (const [course, row] of s.load) {
+      for (const [act, min] of row) {
+        const sum = (s.loadItems.get(loadKey(course, act)) ?? []).reduce((a, i) => a + i.min, 0);
+        expect(sum).toBe(min);
+      }
+    }
   });
 });

@@ -17,6 +17,8 @@ export interface WeekStats {
   estimateRatio: number | null;
   /** Carga académica: ramo → tipo de actividad → minutos. */
   load: Map<string, Map<string, number>>;
+  /** Qué suma cada fila de la carga académica: clave `loadKey(ramo, actividad)` → partes, de mayor a menor. */
+  loadItems: Map<string, LoadItem[]>;
   /** Minutos en tareas personales (no académicas), por categoría. */
   personal: Map<string, number>;
   personalTotal: number;
@@ -35,15 +37,57 @@ export interface AttendanceStats extends AttendanceCount {
   byCourse: Map<string, AttendanceCount>;
 }
 
-function addLoad(load: Map<string, Map<string, number>>, course: string, activity: string, min: number) {
+/** Una parte de una fila de la carga académica: una tarea, una clase del horario o una evaluación. */
+export interface LoadItem {
+  key: string;
+  kind: 'tarea' | 'clase' | 'evaluacion';
+  label: string;
+  min: number;
+  /** Días de la semana (en orden) en que sumó tiempo. */
+  days: ISODate[];
+  /** Veces que sumó: sesiones de clase o registros de tiempo. */
+  count: number;
+  /** Minutos agregados a mano (solo tareas). */
+  manualMin: number;
+  /** Solo tareas: si está terminada. */
+  done?: boolean;
+  taskId?: string;
+}
+
+export function loadKey(course: string, activity: string): string {
+  return `${course}|${activity}`;
+}
+
+type LoadPart = Pick<LoadItem, 'key' | 'kind' | 'label'> & Partial<Pick<LoadItem, 'done' | 'taskId'>> & { manual?: boolean };
+
+function addLoad(
+  load: Map<string, Map<string, number>>,
+  items: Map<string, Map<string, LoadItem>>,
+  course: string,
+  activity: string,
+  min: number,
+  day: ISODate,
+  part: LoadPart,
+) {
   if (min <= 0) return;
   const row = load.get(course) ?? new Map<string, number>();
   row.set(activity, (row.get(activity) ?? 0) + min);
   load.set(course, row);
+
+  const k = loadKey(course, activity);
+  const bucket = items.get(k) ?? new Map<string, LoadItem>();
+  const { manual, ...rest } = part;
+  const item = bucket.get(part.key) ?? { ...rest, min: 0, days: [], count: 0, manualMin: 0 };
+  item.min += min;
+  item.count++;
+  if (manual) item.manualMin += min;
+  if (!item.days.includes(day)) item.days.push(day);
+  bucket.set(part.key, item);
+  items.set(k, bucket);
 }
 
 export type StatsInput = Pick<AppData, 'entries' | 'tasks' | 'weekly' | 'skipped' | 'events' | 'stars'> &
-  Partial<Pick<AppData, 'attendance'>>;
+  Partial<Pick<AppData, 'attendance' | 'trash'>>;
 
 /**
  * Estadísticas de la semana que empieza el lunes `weekStart`.
@@ -57,6 +101,9 @@ export function weekStats(data: StatsInput, weekStart: ISODate, now = Date.now()
   const load = new Map<string, Map<string, number>>();
   const focusByDay = Array(7).fill(0) as number[];
   const personal = new Map<string, number>();
+  const items = new Map<string, Map<string, LoadItem>>();
+  const taskById = new Map(data.tasks.map((t) => [t.id, t]));
+  for (const tr of data.trash ?? []) if (!taskById.has(tr.task.id)) taskById.set(tr.task.id, tr.task);
 
   for (const e of data.entries) {
     if (e.end <= startTs || e.start >= endTs) continue;
@@ -67,7 +114,15 @@ export function weekStats(data: StatsInput, weekStart: ISODate, now = Date.now()
       const cat = e.categoryId ?? NO_CATEGORY;
       personal.set(cat, (personal.get(cat) ?? 0) + min);
     } else {
-      addLoad(load, e.courseId ?? NO_COURSE, e.activityId, min);
+      const task = taskById.get(e.taskId);
+      addLoad(load, items, e.courseId ?? NO_COURSE, e.activityId, min, days[dayIdx], {
+        key: `t:${e.taskId}`,
+        kind: 'tarea',
+        label: task?.title ?? 'Tarea borrada',
+        done: task?.done ?? false,
+        taskId: task ? e.taskId : undefined,
+        manual: e.manual,
+      });
     }
   }
 
@@ -91,14 +146,22 @@ export function weekStats(data: StatsInput, weekStart: ISODate, now = Date.now()
       if (mark === 'falte') continue;
       const min = endMin - hhmmToMin(b.start);
       classTotal += min;
-      addLoad(load, b.courseId ?? NO_COURSE, b.activityId ?? 'catedra', min);
+      addLoad(load, items, b.courseId ?? NO_COURSE, b.activityId ?? 'catedra', min, day, {
+        key: `c:${b.id}`,
+        kind: 'clase',
+        label: b.title,
+      });
     }
     for (const ev of data.events) {
       if (ev.date !== day || ev.kind !== 'evaluacion' || !ev.start) continue;
       const s = hhmmToMin(ev.start);
       const end = ev.end ? hhmmToMin(ev.end) : s + 60;
       if (tsAt(day, end) > now) continue;
-      addLoad(load, ev.courseId ?? NO_COURSE, 'evaluacion', end - s);
+      addLoad(load, items, ev.courseId ?? NO_COURSE, 'evaluacion', end - s, day, {
+        key: `e:${ev.id}`,
+        kind: 'evaluacion',
+        label: ev.title,
+      });
     }
   }
 
@@ -124,6 +187,12 @@ export function weekStats(data: StatsInput, weekStart: ISODate, now = Date.now()
     starsEarned,
     estimateRatio: estimated > 0 ? logged / estimated : null,
     load,
+    loadItems: new Map(
+      [...items.entries()].map(([k, bucket]) => [
+        k,
+        [...bucket.values()].map((it) => ({ ...it, days: [...it.days].sort() })).sort((a, b) => b.min - a.min),
+      ]),
+    ),
     personal,
     personalTotal: [...personal.values()].reduce((a, b) => a + b, 0),
     attendance,

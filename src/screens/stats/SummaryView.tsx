@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { useLookups } from '../../hooks/useDerived';
-import { NO_CATEGORY, NO_COURSE, loadAsText, weekStats } from '../../lib/stats';
-import { addDays, formatHours, formatShortDate, startOfWeek, today } from '../../lib/time';
+import { NO_CATEGORY, NO_COURSE, loadAsText, loadKey, weekStats, type LoadItem } from '../../lib/stats';
+import { addDays, formatDuration, formatHours, formatShortDate, startOfWeek, today, weekdayOf } from '../../lib/time';
 import type { ISODate } from '../../types';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../../store/useStore';
@@ -27,11 +27,18 @@ export function SummaryView({ week, setWeek }: Props) {
       attendance: s.attendance,
       events: s.events,
       stars: s.stars,
+      trash: s.trash,
     })),
   );
   const showToast = useUI((s) => s.showToast);
   const logSurveyCopy = useStore((s) => s.logSurveyCopy);
   const { course, category, activityName } = useLookups();
+  const openTaskForm = useUI((s) => s.openTaskForm);
+  // Filas abiertas de la carga académica, por semana, para que cambiar de semana las cierre.
+  const [open, setOpen] = useState<{ week: ISODate; keys: string[] }>({ week, keys: [] });
+  const openKeys = open.week === week ? open.keys : [];
+  const toggle = (key: string) =>
+    setOpen({ week, keys: openKeys.includes(key) ? openKeys.filter((k) => k !== key) : [...openKeys, key] });
 
   const stats = useMemo(() => weekStats(data, week), [data, week]);
   const label = `${formatShortDate(week)} – ${formatShortDate(addDays(week, 6))}`;
@@ -134,7 +141,7 @@ export function SummaryView({ week, setWeek }: Props) {
           </button>
         </div>
         <p className="small muted" style={{ margin: 0 }}>
-          Horas por ramo y tipo de actividad, sumando clases del horario (menos las que faltaste), evaluaciones y tiempo trabajado en tareas de la U.
+          Horas por ramo y tipo de actividad, sumando clases del horario (menos las que faltaste), evaluaciones y tiempo trabajado en tareas de la U. Toca un tipo para ver qué lo suma.
         </p>
         {loadRows.length === 0 ? (
           <p className="empty" style={{ margin: 0 }}>Todavía no hay registros esta semana.</p>
@@ -156,14 +163,61 @@ export function SummaryView({ week, setWeek }: Props) {
                   </th>
                   <td>{formatHours(total)}</td>
                 </tr>
-                {row.map(([act, min]) => (
-                  <tr key={act}>
-                    <th scope="row" className={styles.sub}>
-                      {activityName(act)}
-                    </th>
-                    <td>{formatHours(min)}</td>
-                  </tr>
-                ))}
+                {row.map(([act, min]) => {
+                  const key = loadKey(id, act);
+                  const isOpen = openKeys.includes(key);
+                  const items = stats.loadItems.get(key) ?? [];
+                  const panelId = `load-${key}`;
+                  return (
+                    <Fragment key={act}>
+                      <tr>
+                        <th scope="row" className={styles.sub}>
+                          <button
+                            type="button"
+                            className={`${styles.rowToggle} ${isOpen ? styles.rowToggleOpen : ''}`}
+                            aria-expanded={isOpen}
+                            aria-controls={panelId}
+                            onClick={() => toggle(key)}
+                          >
+                            <Icon name="next" size={14} />
+                            {activityName(act)}
+                          </button>
+                        </th>
+                        <td className={isOpen ? styles.openValue : undefined}>{formatHours(min)}</td>
+                      </tr>
+                      {isOpen && (
+                        <tr>
+                          <td colSpan={2} className={styles.detailCell}>
+                            <ul id={panelId} className={styles.detail}>
+                              {items.map((it) => (
+                                <li key={it.key} className={styles.detailItem}>
+                                  <div className={styles.detailHead}>
+                                    {it.taskId ? (
+                                      <button
+                                        type="button"
+                                        className={styles.detailTitle}
+                                        onClick={() => openTaskForm({ taskId: it.taskId })}
+                                      >
+                                        {it.label}
+                                      </button>
+                                    ) : (
+                                      <span className={styles.detailTitle}>{it.label}</span>
+                                    )}
+                                    <span className={styles.detailMin}>{formatDuration(Math.round(it.min))}</span>
+                                  </div>
+                                  <span className={styles.bar} aria-hidden="true">
+                                    <span style={{ width: `${Math.max(4, Math.round((it.min / min) * 100))}%` }} />
+                                  </span>
+                                  <span className="small muted">{itemMeta(it)}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             ))}
           </table>
@@ -221,4 +275,22 @@ function Tile({ value, label, star }: { value: string; label: string; star?: boo
       <span className="small muted">{label}</span>
     </div>
   );
+}
+
+const WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+function dayLabel(d: ISODate): string {
+  return `${WEEKDAYS[weekdayOf(d)]} ${Number(d.slice(8))}`;
+}
+
+/** Línea bajo cada parte: qué días sumó y, en tareas, si está hecha o fue agregada a mano. */
+function itemMeta(it: LoadItem): string {
+  const days = it.days.map(dayLabel).join(', ');
+  if (it.kind === 'clase') return `${it.count} ${it.count === 1 ? 'clase' : 'clases'} · ${days}`;
+  if (it.kind === 'evaluacion') return `Evaluación · ${days}`;
+  const parts = [days, it.done ? 'hecha' : 'sin terminar'];
+  if (it.manualMin > 0) {
+    parts.push(it.manualMin >= it.min - 0.5 ? 'a mano' : `${formatDuration(Math.round(it.manualMin))} a mano`);
+  }
+  return parts.join(' · ');
 }
