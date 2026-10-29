@@ -204,3 +204,26 @@ describe('papelera', () => {
     expect(t.done).toBe(false);
   });
 });
+
+describe('cambiar el ramo de una tarea', () => {
+  beforeEach(() => st().resetData());
+
+  it('el tiempo ya registrado pasa al ramo nuevo', () => {
+    const id = addTestTask();
+    st().addManualEntry({ taskId: id, date: today(), start: '08:00', end: '09:00' });
+    expect(st().entries[0].courseId).toBeUndefined();
+    st().updateTask(id, { courseId: 'ramo-x', activityId: 'tareas' });
+    const e = st().entries.find((x) => x.taskId === id)!;
+    expect(e.courseId).toBe('ramo-x');
+    expect(e.activityId).toBe('tareas');
+    expect(e.manual).toBe(true);
+  });
+
+  it('cambiar solo el título no toca los registros', () => {
+    const id = addTestTask();
+    st().addManualEntry({ taskId: id, date: today(), start: '08:00', end: '09:00' });
+    const before = st().entries;
+    st().updateTask(id, { title: 'Otro nombre' });
+    expect(st().entries).toBe(before);
+  });
+});

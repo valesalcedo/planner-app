@@ -209,7 +209,20 @@ export const useStore = create<Store>()(
           set((s) => ({ tasks: [...s.tasks, { ...t, id: uid(), createdAt: Date.now(), done: false }] })),
 
         updateTask: (id, patch) =>
-          set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
+          set((s) => {
+            const tasks = s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t));
+            // Si cambias el ramo, la actividad o si es personal, el tiempo ya registrado de la
+            // tarea pasa a contarse con la nueva clasificación (en el resumen y la carga académica).
+            const reclass = (['courseId', 'activityId', 'personal', 'categoryId'] as const).some((k) => k in patch);
+            const task = tasks.find((t) => t.id === id);
+            if (!reclass || !task) return { tasks };
+            return {
+              tasks,
+              entries: s.entries.map((e) =>
+                e.taskId === id ? { ...entryFor(task, e.subtaskId, e.start, e.end, e.manual), id: e.id } : e,
+              ),
+            };
+          }),
 
         deleteTask: (id) => {
           const task = get().tasks.find((t) => t.id === id);
