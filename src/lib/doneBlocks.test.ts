@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Task, TimeEntry } from '../types';
-import { doneBlocksFor } from './doneBlocks';
+import { doneBlocksFor, doneDayOf } from './doneBlocks';
 import { tsAt } from './time';
 
 const DAY = '2026-10-15';
@@ -60,5 +60,16 @@ describe('doneBlocksFor', () => {
   it('ignora registros de otros días', () => {
     const tasks = [task({ id: 'a', title: 'A', done: true })];
     expect(doneBlocksFor(DAY, tasks, [entry('a', 600, 660, undefined, '2026-10-14')])).toEqual([]);
+  });
+});
+
+describe('doneDayOf', () => {
+  it('una tarea terminada aparece el día en que la marcaste, no el día planificado', () => {
+    const t = task({ id: 'a', title: 'Atrasada', date: '2026-10-10', done: true, doneAt: tsAt(DAY, 900) });
+    expect(doneDayOf(t)).toBe(DAY);
+  });
+
+  it('sin fecha de término usa el día planificado', () => {
+    expect(doneDayOf(task({ id: 'a', title: 'Vieja', date: '2026-10-10', done: true }))).toBe('2026-10-10');
   });
 });

@@ -4,7 +4,7 @@ import { StarBadge } from '../../components/StarBadge';
 import { useStreak } from '../../hooks/useDerived';
 import { useNow } from '../../hooks/useNow';
 import { useSubtaskDays } from '../../hooks/useSubtaskDays';
-import { doneBlocksFor } from '../../lib/doneBlocks';
+import { doneBlocksFor, doneDayOf } from '../../lib/doneBlocks';
 import { buildUnits, busyBlocksFor, planDay, travelBlocksFor } from '../../lib/scheduler';
 import { minutesOn, taskDays } from '../../lib/spread';
 import { focusPhrase } from '../../lib/voice';
@@ -44,11 +44,12 @@ export function TodayScreen() {
   const subDays = useSubtaskDays(now);
 
   // Hoy incluye lo atrasado; otros días muestran solo lo planificado para ese día. Una tarea
-  // repartida aparece en cada día en que tiene subtareas.
+  // repartida aparece en cada día en que tiene subtareas. Las terminadas aparecen el día en
+  // que las marcaste como hechas (una atrasada que terminas hoy se ve hoy).
   const dayTasks = useMemo(
     () =>
       tasks.filter((t) =>
-        isPast || t.done ? t.date === date : taskDays(t, subDays, todayDate).includes(date),
+        t.done ? doneDayOf(t) === date : isPast ? t.date === date : taskDays(t, subDays, todayDate).includes(date),
       ),
     [tasks, date, isPast, subDays, todayDate],
   );

@@ -7,7 +7,7 @@ import { inkOn } from '../../lib/color';
 import type { DoneBlock } from '../../lib/doneBlocks';
 import type { DayPlan, Placement, TravelBlock } from '../../lib/scheduler';
 import { pinAt, unitKey } from '../../lib/scheduler';
-import { addDays, formatDuration, hhmmToMin, minToHHMM, today, tsAt, weekdayOf } from '../../lib/time';
+import { addDays, formatDuration, formatShortDate, hhmmToMin, minToHHMM, toISODate, today, tsAt, weekdayOf } from '../../lib/time';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
 import type { Attendance, ISODate, Task, TaskPin, TravelLeg } from '../../types';
@@ -19,7 +19,7 @@ interface Props {
   plan: DayPlan;
   /** Trabajo terminado, en las horas en que se hizo. */
   doneBlocks: DoneBlock[];
-  /** Tareas hechas sin tiempo registrado ese día (no tienen hora donde quedarse). */
+  /** Tareas terminadas este día que no tienen tiempo registrado en este día (no tienen hora donde quedarse). */
   doneTasks: Task[];
 }
 
@@ -44,6 +44,7 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
   const events = useStore((s) => s.events);
   const skipped = useStore((s) => s.skipped[date]);
   const activeTimer = useStore((s) => s.activeTimer);
+  const entries = useStore((s) => s.entries);
   const toggleSkip = useStore((s) => s.toggleSkip);
   const attendance = useStore((s) => s.attendance[date]);
   const setAttendance = useStore((s) => s.setAttendance);
@@ -182,6 +183,16 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
   const complete = (p: Placement) => {
     if (p.unit.subtaskId) setSubtaskDone(p.unit.taskId, p.unit.subtaskId, true);
     else setTaskDone(p.unit.taskId, true);
+  };
+
+  /** Dónde quedó el tiempo de una tarea terminada que no tiene bloque en este día. */
+  const loggedElsewhere = (t: Task) => {
+    const mine = entries.filter((e) => e.taskId === t.id);
+    if (mine.length === 0) return 'Sin tiempo registrado';
+    const min = mine.reduce((s, e) => s + (e.end - e.start) / 60000, 0);
+    const days = [...new Set(mine.map((e) => toISODate(new Date(e.start))))].sort();
+    const when = days.length === 1 ? `el ${formatShortDate(days[0])}` : `en ${days.length} días`;
+    return `${formatDuration(min)} registradas ${when}`;
   };
 
   // Una misma tarea puede aparecer varias veces si la overflow la parte; mostramos cada tarea una vez.
@@ -396,19 +407,22 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
       )}
 
       {doneTasks.length > 0 && (
-        <details className="card">
+        <details className="card" open>
           <summary className="section-title" style={{ cursor: 'pointer', minHeight: 28 }}>
-            Hechas sin hora registrada ({doneTasks.length})
+            Terminadas este día ({doneTasks.length})
           </summary>
           <ul className={styles.doneList}>
             {doneTasks.map((t) => (
               <li key={t.id}>
-                <label className="row">
+                <label className="row" style={{ alignItems: 'flex-start' }}>
                   <span className="check-hit">
-                    <input type="checkbox" className="checkbox" checked onChange={() => setTaskDone(t.id, false)} />
+                    <input type="checkbox" className="checkbox" aria-label={`Desmarcar "${t.title}"`} checked onChange={() => setTaskDone(t.id, false)} />
                   </span>
-                  <span className="muted" style={{ textDecoration: 'line-through' }}>
-                    {t.title}
+                  <span className="stack" style={{ gap: 0, minWidth: 0 }}>
+                    <span className="muted" style={{ textDecoration: 'line-through' }}>
+                      {t.title}
+                    </span>
+                    <span className="small muted">{loggedElsewhere(t)}</span>
                   </span>
                 </label>
               </li>

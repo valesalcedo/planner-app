@@ -6,7 +6,7 @@
  * tachada. Registros seguidos de la misma tarea se juntan en un solo bloque.
  */
 import type { ISODate, Task, TimeEntry } from '../types';
-import { addDays, tsAt } from './time';
+import { addDays, toISODate, tsAt } from './time';
 
 export interface DoneBlock {
   key: string;
@@ -60,4 +60,13 @@ export function doneBlocksFor(date: ISODate, tasks: Task[], entries: TimeEntry[]
     }
   }
   return merged;
+}
+
+/**
+ * Día en que una tarea terminada aparece en "Mi día": el día en que la marcaste como hecha
+ * (no el día para el que estaba planificada). Así una tarea atrasada que terminas hoy
+ * aparece hoy, aunque su tiempo lo hayas registrado otro día.
+ */
+export function doneDayOf(task: Task): ISODate {
+  return task.doneAt !== undefined ? toISODate(new Date(task.doneAt)) : task.date;
 }
