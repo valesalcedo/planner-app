@@ -6,6 +6,7 @@ import { WEEKDAYS, addDays, formatDuration, formatShortDate, weekdayOf } from '.
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
 import type { ISODate, Subtask, Task } from '../../types';
+import { GroupTag } from './DayTimeline';
 import styles from './Today.module.css';
 
 interface Props {
@@ -57,15 +58,20 @@ export function TaskList({ tasks, date, days, todayDate }: Props) {
               <span className={styles.workTitle} style={t.done ? { textDecoration: 'line-through' } : undefined}>
                 {t.title}
               </span>
-              <span className="small muted">
-                {formatDuration(byTask.get(t.id) ?? 0)} de {formatDuration(t.estimateMin)}
-                {isSplit(t, days, todayDate) && ` · ${formatDuration(minutesOn(t, date, days, todayDate))} este día`}
-                {t.personal
-                  ? ` · ${category(t.categoryId)?.name ?? 'Personal'}`
-                  : course(t.courseId) && ` · ${course(t.courseId)!.name}`}
-                {isSpread(t) || isRanged(t)
-                  ? ` · hasta ${dayLabel(t.deadline!, todayDate)}`
-                  : t.date < date && !t.done && ` · atrasada desde el ${formatShortDate(t.date)}`}
+              <span className={styles.workMeta}>
+                {(t.personal || course(t.courseId)) && (
+                  <GroupTag
+                    name={t.personal ? category(t.categoryId)?.name ?? 'Personal' : course(t.courseId)!.name}
+                    color={t.personal ? category(t.categoryId)?.color : course(t.courseId)?.color}
+                  />
+                )}
+                <span className="small muted">
+                  {formatDuration(byTask.get(t.id) ?? 0)} de {formatDuration(t.estimateMin)}
+                  {isSplit(t, days, todayDate) && ` · ${formatDuration(minutesOn(t, date, days, todayDate))} este día`}
+                  {isSpread(t) || isRanged(t)
+                    ? ` · hasta ${dayLabel(t.deadline!, todayDate)}`
+                    : t.date < date && !t.done && ` · atrasada desde el ${formatShortDate(t.date)}`}
+                </span>
               </span>
             </button>
             <button

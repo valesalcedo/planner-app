@@ -96,3 +96,40 @@
   background: var(--surface);
   box-shadow: var(--shadow-soft);
 }
+
+/* Próximas evaluaciones: tiritas delgadas sobre el calendario. */
+.upcoming {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.strip {
+  border: none;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: var(--pill);
+  background: var(--accent-soft);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+}
+
+.stripName {
+  font-size: 13px;
+  font-weight: 800;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stripWhen {
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+}

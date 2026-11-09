@@ -10,7 +10,7 @@ import { pinAt, unitKey } from '../../lib/scheduler';
 import { addDays, formatDuration, formatShortDate, hhmmToMin, minToHHMM, toISODate, today, tsAt, weekdayOf } from '../../lib/time';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
-import type { Attendance, ISODate, Task, TaskPin, TravelLeg } from '../../types';
+import type { Attendance, ISODate, Task, TaskPin, TravelLeg, TravelOverride } from '../../types';
 import styles from './Today.module.css';
 import { type DragPayload, type DropTarget, useDragDrop } from './useDragDrop';
 
@@ -49,6 +49,8 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
   const attendance = useStore((s) => s.attendance[date]);
   const setAttendance = useStore((s) => s.setAttendance);
   const starsPerClass = useStore((s) => s.settings.starsPerClass);
+  const travelMin = useStore((s) => s.settings.travelMin);
+  const [addingTravel, setAddingTravel] = useState(false);
   const now = useNow(60_000);
   const startTimer = useStore((s) => s.startTimer);
   const setTaskDone = useStore((s) => s.setTaskDone);
@@ -64,6 +66,9 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
   const { course, category, blockColor, eventColor } = useLookups();
   /** Ramo de una tarea de la U, o categoría de una personal. */
   const groupName = (t?: Task) => (t?.personal ? category(t.categoryId)?.name ?? 'Personal' : course(t?.courseId)?.name);
+  /** Color del ramo (o de la categoría) para su etiqueta. */
+  const groupColor = (t?: Task) => (t?.personal ? category(t.categoryId)?.color : course(t?.courseId)?.color);
+  const group = (t?: Task) => ({ courseName: groupName(t), courseColor: groupColor(t) });
 
   const todayDate = today();
   const isPast = date < todayDate;
@@ -89,6 +94,8 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
   // Clases a las que no vas (o faltaste): tampoco se dibujan; se restauran desde el mismo lugar.
   const notGoingBlocks = plan.busy.filter((b) => b.free);
   const removedTravel = plan.travel.filter((t) => t.removed);
+  // Traslados que no hay este día (ni automáticos ni quitados): se pueden agregar a mano.
+  const missingLegs = (['ida', 'vuelta'] as const).filter((leg) => !plan.travel.some((t) => t.leg === leg));
   const travelLegs = plan.travel.filter((t) => !t.removed);
   // Lo que terminaste mientras ibas en un traslado se queda adentro de su tarjeta.
   const travelLegOf = (b: DoneBlock) => travelLegs.find((t) => b.start >= t.start && b.start < t.end)?.leg;
@@ -148,7 +155,7 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
         placement={p}
         task={taskById.get(p.unit.taskId)}
         date={date}
-        courseName={groupName(taskById.get(p.unit.taskId))}
+        {...group(taskById.get(p.unit.taskId))}
         short={!inTravel && (plan.slots.find((s) => p.start >= s.start && p.end <= s.end)?.betweenClasses ?? false)}
         running={activeTimer?.taskId === p.unit.taskId && activeTimer.subtaskId === p.unit.subtaskId}
         dragging={drag?.payload.kind === 'unit' && drag.payload.key === key}
@@ -268,7 +275,7 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
                         <DoneCard
                           key={`done-${b.key}-${b.start}`}
                           block={b}
-                          courseName={groupName(taskById.get(b.taskId))}
+                          {...group(taskById.get(b.taskId))}
                           onUndo={() => undo(b)}
                         />
                       ),
@@ -287,7 +294,7 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
               ) : row.type === 'done' ? (
                 <DoneCard
                   block={row.block}
-                  courseName={groupName(taskById.get(row.block.taskId))}
+                  {...group(taskById.get(row.block.taskId))}
                   onUndo={() => undo(row.block)}
                 />
               ) : (
@@ -355,10 +362,37 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
           }}
           onTravel={(patch) => {
             if (moving.kind === 'travel') {
-              setTravel(date, moving.block.leg, patch);
-              if (patch?.removed) showToast(`Quitada: ${TRAVEL_TITLE[moving.block.leg].toLowerCase()}. Puedes restaurarla al final del día`);
+              const { leg, added } = moving.block;
+              if (patch?.removed && added) {
+                // Uno agregado a mano simplemente se borra.
+                setTravel(date, leg, null);
+                showToast(`Quitado: ${TRAVEL_TITLE[leg].toLowerCase()}`);
+              } else {
+                setTravel(date, leg, patch);
+                if (patch?.removed) showToast(`Quitada: ${TRAVEL_TITLE[leg].toLowerCase()}. Puedes restaurarla al final del día`);
+              }
             }
             setMoving(null);
+          }}
+        />
+      )}
+
+      {!isPast && missingLegs.length > 0 && (
+        <button type="button" className={`btn ${styles.addTravel}`} onClick={() => setAddingTravel(true)}>
+          <Icon name="bus" size={18} /> Agregar traslado
+        </button>
+      )}
+
+      {addingTravel && (
+        <TravelSheet
+          title="Agregar traslado"
+          legs={missingLegs}
+          initial={{ leg: missingLegs[0], start: missingLegs[0] === 'vuelta' ? '18:00' : '09:00', durationMin: travelMin }}
+          onClose={() => setAddingTravel(false)}
+          onSave={({ leg, start, durationMin }) => {
+            setTravel(date, leg, { added: true, start, durationMin, removed: undefined });
+            showToast(`${TRAVEL_TITLE[leg]} agregada`);
+            setAddingTravel(false);
           }}
         />
       )}
@@ -508,6 +542,7 @@ interface WorkCardProps {
   task?: Task;
   date: ISODate;
   courseName?: string;
+  courseColor?: string;
   short: boolean;
   running: boolean;
   dragging: boolean;
@@ -518,7 +553,7 @@ interface WorkCardProps {
   onComplete: () => void;
 }
 
-function WorkCard({ placement, task, date, courseName, short, running, dragging, dropMin, handle, onStart, onComplete }: WorkCardProps) {
+function WorkCard({ placement, task, date, courseName, courseColor, short, running, dragging, dropMin, handle, onStart, onComplete }: WorkCardProps) {
   const { unit } = placement;
   const openTaskForm = useUI((s) => s.openTaskForm);
   const openTimeLog = useUI((s) => s.openTimeLog);
@@ -555,11 +590,13 @@ function WorkCard({ placement, task, date, courseName, short, running, dragging,
         </span>
         <button type="button" className={styles.workMain} onClick={() => openTaskForm({ taskId: task.id })}>
           <span className={styles.workTitle}>{unit.title}</span>
-          <span className="small muted">
-            {unit.subtaskId ? `${unit.taskTitle} · ` : ''}
-            {formatDuration(dur)}
-            {placement.partial && ' (una parte)'}
-            {courseName && ` · ${courseName}`}
+          <span className={styles.workMeta}>
+            {courseName && <GroupTag name={courseName} color={courseColor} />}
+            <span className="small muted">
+              {unit.subtaskId ? `${unit.taskTitle} · ` : ''}
+              {formatDuration(dur)}
+              {placement.partial && ' (una parte)'}
+            </span>
           </span>
         </button>
       </div>
@@ -590,11 +627,12 @@ function WorkCard({ placement, task, date, courseName, short, running, dragging,
 interface DoneCardProps {
   block: DoneBlock;
   courseName?: string;
+  courseColor?: string;
   onUndo: () => void;
 }
 
 /** Trabajo terminado: se queda en su hora, tachado y apagado. */
-function DoneCard({ block, courseName, onUndo }: DoneCardProps) {
+function DoneCard({ block, courseName, courseColor, onUndo }: DoneCardProps) {
   const openTaskForm = useUI((s) => s.openTaskForm);
   return (
     <div className={`${styles.work} ${styles.done}`}>
@@ -604,10 +642,12 @@ function DoneCard({ block, courseName, onUndo }: DoneCardProps) {
         </span>
         <button type="button" className={styles.workMain} onClick={() => openTaskForm({ taskId: block.taskId })}>
           <span className={styles.workTitle}>{block.title}</span>
-          <span className="small muted">
-            Hecha · {minToHHMM(block.start)}–{minToHHMM(block.end)} · {formatDuration(block.end - block.start)}
-            {block.subtaskId ? ` · ${block.taskTitle}` : ''}
-            {courseName && ` · ${courseName}`}
+          <span className={styles.workMeta}>
+            {courseName && <GroupTag name={courseName} color={courseColor} />}
+            <span className="small muted">
+              Hecha · {minToHHMM(block.start)}–{minToHHMM(block.end)} · {formatDuration(block.end - block.start)}
+              {block.subtaskId ? ` · ${block.taskTitle}` : ''}
+            </span>
           </span>
         </button>
       </div>
@@ -628,7 +668,7 @@ function TravelCard({ block, dragging, handle, children }: TravelCardProps) {
   const range = `${minToHHMM(block.start)}–${minToHHMM(block.end)}`;
   const hasTasks = Array.isArray(children) ? children.length > 0 : !!children;
 
-  const status = block.moved ? ' · movido' : '';
+  const status = block.added ? ' · agregado' : block.moved ? ' · movido' : '';
 
   return (
     <div className={`${styles.block} ${styles.travel} ${dragging ? styles.lifted : ''}`} data-drop="travel" data-leg={block.leg}>
@@ -640,7 +680,7 @@ function TravelCard({ block, dragging, handle, children }: TravelCardProps) {
           <div className="stack" style={{ gap: 0, minWidth: 0 }}>
             <span className={styles.blockTitle}>{title}</span>
             <span className="small">
-              {range}
+              {range} · {formatDuration(block.end - block.start)}
               {status}
             </span>
           </div>
@@ -666,36 +706,28 @@ interface MoveSheetProps {
   pin?: TaskPin;
   onClose: () => void;
   onPin: (pin: TaskPin | null) => void;
-  onTravel: (patch: { start?: string; removed?: boolean } | null) => void;
+  onTravel: (patch: TravelOverride | null) => void;
 }
 
 /** Mover sin arrastrar: elegir la hora exacta, un traslado, o soltar. */
 function MoveSheet({ state, travel, pin, onClose, onPin, onTravel }: MoveSheetProps) {
-  const initial = state.kind === 'unit' ? state.start : state.block.start;
-  const [time, setTime] = useState(minToHHMM(initial));
+  const [time, setTime] = useState(minToHHMM(state.kind === 'unit' ? state.start : state.block.start));
 
   if (state.kind === 'travel') {
-    const title = TRAVEL_TITLE[state.block.leg];
+    const { block } = state;
     return (
-      <Sheet title={title} onClose={onClose}>
-        <div className="stack">
-          <div className="field">
-            <label htmlFor="mv-time">Salgo a las</label>
-            <input id="mv-time" type="time" className="input" value={time} onChange={(e) => e.target.value && setTime(e.target.value)} />
-          </div>
-          <button type="button" className="btn btn--primary" onClick={() => onTravel({ start: time, removed: undefined })}>
-            Mover a esta hora
-          </button>
-          {state.block.moved && (
-            <button type="button" className="btn" onClick={() => onTravel(null)}>
-              Volver a la hora de siempre
-            </button>
-          )}
-          <button type="button" className="btn" onClick={() => onTravel({ removed: true })}>
-            Hoy no viajo
-          </button>
-        </div>
-      </Sheet>
+      <TravelSheet
+        title={TRAVEL_TITLE[block.leg]}
+        legs={[block.leg]}
+        initial={{ leg: block.leg, start: minToHHMM(block.start), durationMin: block.end - block.start }}
+        onClose={onClose}
+        // Si solo cambias la duración, la hora sigue siendo la automática (la ida igual llega a clases).
+        onSave={({ start, durationMin }) =>
+          onTravel({ start: block.moved || block.added || start !== minToHHMM(block.start) ? start : undefined, durationMin, removed: undefined })
+        }
+        onReset={!block.added && (block.moved || block.customDuration) ? () => onTravel(null) : undefined}
+        onRemove={() => onTravel({ removed: true })}
+      />
     );
   }
 
@@ -717,6 +749,98 @@ function MoveSheet({ state, travel, pin, onClose, onPin, onTravel }: MoveSheetPr
         {pin && (
           <button type="button" className="btn" onClick={() => onPin(null)}>
             Soltar (que la app la ordene)
+          </button>
+        )}
+      </div>
+    </Sheet>
+  );
+}
+
+/** Etiqueta chiquita con el nombre del ramo (o categoría) pintada de su color. */
+export function GroupTag({ name, color }: { name: string; color?: string }) {
+  const bg = color ?? 'var(--switch-off)';
+  return (
+    <span className={styles.groupTag} style={{ background: bg, color: color ? inkOn(color) : 'var(--ink)' }}>
+      {name}
+    </span>
+  );
+}
+
+const DURATIONS = [30, 45, 60, 90];
+
+interface TravelSheetProps {
+  title: string;
+  /** Traslados que se pueden elegir (al agregar, los que faltan ese día). */
+  legs: TravelLeg[];
+  initial: { leg: TravelLeg; start: string; durationMin: number };
+  onClose: () => void;
+  onSave: (v: { leg: TravelLeg; start: string; durationMin: number }) => void;
+  /** Volver a la hora y duración de siempre. */
+  onReset?: () => void;
+  /** Quitarlo de este día. */
+  onRemove?: () => void;
+}
+
+/** Agregar un traslado o cambiar su hora y duración ese día. */
+function TravelSheet({ title, legs, initial, onClose, onSave, onReset, onRemove }: TravelSheetProps) {
+  const [leg, setLeg] = useState(initial.leg);
+  const [start, setStart] = useState(initial.start);
+  const [duration, setDuration] = useState(initial.durationMin);
+  const valid = duration >= 5 && duration <= 240;
+
+  return (
+    <Sheet title={title} onClose={onClose}>
+      <div className="stack">
+        {legs.length > 1 && (
+          <div className="segmented" role="group" aria-label="Traslado">
+            {legs.map((l) => (
+              <button key={l} type="button" aria-pressed={leg === l} onClick={() => setLeg(l)}>
+                {TRAVEL_TITLE[l]}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="field">
+          <label htmlFor="tv-time">Salgo a las</label>
+          <input id="tv-time" type="time" className="input" value={start} onChange={(e) => e.target.value && setStart(e.target.value)} />
+        </div>
+        <div className="field">
+          <span className="field-label" id="tv-dur">
+            Me demoro
+          </span>
+          <div className="pills" role="group" aria-labelledby="tv-dur">
+            {DURATIONS.map((m) => (
+              <button key={m} type="button" className="pill" aria-pressed={duration === m} onClick={() => setDuration(m)}>
+                {formatDuration(m)}
+              </button>
+            ))}
+            <label className={styles.customMin}>
+              <span className="sr-only">Otros minutos</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={5}
+                max={240}
+                className="input"
+                placeholder="Otro"
+                value={DURATIONS.includes(duration) ? '' : duration || ''}
+                onChange={(e) => setDuration(Number(e.target.value) || 0)}
+              />
+            </label>
+          </div>
+          <span className="small muted">Solo este día. La duración de siempre está en Ajustes › Mi día.</span>
+        </div>
+        <button type="button" className="btn btn--primary" disabled={!valid} onClick={() => onSave({ leg, start, durationMin: duration })}>
+          {onRemove ? 'Guardar' : 'Agregar'}
+        </button>
+        {onReset && (
+          <button type="button" className="btn" onClick={onReset}>
+            Volver a lo de siempre
+          </button>
+        )}
+        {onRemove && (
+          <button type="button" className="btn" onClick={onRemove}>
+            Hoy no viajo
           </button>
         )}
       </div>

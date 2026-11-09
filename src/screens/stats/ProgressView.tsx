@@ -106,7 +106,7 @@ export function ProgressView({ week, onOpenCourse }: Props) {
           {data.courses.length === 0 ? (
             <>
               Agrega tus ramos en{' '}
-              <button type="button" className={styles.link} onClick={() => openPage('ajustes')}>
+              <button type="button" className={styles.link} onClick={() => openPage('ajustes-ramos')}>
                 Ajustes
               </button>{' '}
               para ver tu avance en cada uno.

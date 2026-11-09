@@ -5,14 +5,14 @@ import { CalendarScreen } from './screens/calendar/CalendarScreen';
 import { FocusScreen } from './screens/focus/FocusScreen';
 import { MenuScreen } from './screens/menu/MenuScreen';
 import { ScheduleScreen } from './screens/schedule/ScheduleScreen';
-import { SettingsScreen } from './screens/settings/SettingsScreen';
+import { SettingsScreen, SettingsSectionScreen } from './screens/settings/SettingsScreen';
 import { ShopScreen } from './screens/shop/ShopScreen';
 import { StatsScreen } from './screens/stats/StatsScreen';
 import { TaskForm } from './screens/task-form/TaskForm';
 import { TimeLogForm } from './screens/time-log/TimeLogForm';
 import { TodayScreen } from './screens/today/TodayScreen';
 import { TrashScreen } from './screens/trash/TrashScreen';
-import { useUI } from './store/useUI';
+import { type SettingsSection, useUI } from './store/useUI';
 
 const TABS = {
   hoy: TodayScreen,
@@ -41,6 +41,8 @@ export function App() {
       <main>
         {page === 'ajustes' ? (
           <SettingsScreen />
+        ) : page?.startsWith('ajustes-') ? (
+          <SettingsSectionScreen key={page} section={page.slice('ajustes-'.length) as SettingsSection} />
         ) : page === 'horario' ? (
           <ScheduleScreen />
         ) : page === 'papelera' ? (

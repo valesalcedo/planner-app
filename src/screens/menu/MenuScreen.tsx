@@ -6,7 +6,6 @@ import { progressShare, progressText } from '../achievements/progressText';
 import styles from './Menu.module.css';
 
 const MORE: { label: string; icon: IconName; page: Exclude<Page, null> }[] = [
-  { label: 'Tema y colores', icon: 'palette', page: 'ajustes' },
   { label: 'Horario semanal', icon: 'calendar', page: 'horario' },
   { label: 'Ajustes', icon: 'gear', page: 'ajustes' },
   { label: 'Papelera', icon: 'trash', page: 'papelera' },

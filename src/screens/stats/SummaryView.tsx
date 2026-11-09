@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { useLookups } from '../../hooks/useDerived';
 import { NO_CATEGORY, NO_COURSE, loadKey, weekStats, type LoadItem } from '../../lib/stats';
-import { addDays, formatDuration, formatShortDate, startOfWeek, today, weekdayOf } from '../../lib/time';
+import { addDays, formatDuration, formatShortDate, weekdayOf } from '../../lib/time';
 import type { ISODate } from '../../types';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../../store/useStore';
@@ -12,12 +12,10 @@ import styles from './Stats.module.css';
 
 interface Props {
   week: ISODate;
-  setWeek: (week: ISODate) => void;
 }
 
 /** La vista de siempre de la pestaña Semana: foco, asistencia y carga académica. */
-export function SummaryView({ week, setWeek }: Props) {
-  const thisWeek = startOfWeek(today());
+export function SummaryView({ week }: Props) {
   const data = useStore(
     useShallow((s) => ({
       entries: s.entries,
@@ -59,15 +57,6 @@ export function SummaryView({ week, setWeek }: Props) {
 
   return (
     <>
-      <div className="segmented" role="group" aria-label="Semana">
-        <button type="button" aria-pressed={week === addDays(thisWeek, -7)} onClick={() => setWeek(addDays(thisWeek, -7))}>
-          Semana pasada
-        </button>
-        <button type="button" aria-pressed={week === thisWeek} onClick={() => setWeek(thisWeek)}>
-          Esta semana
-        </button>
-      </div>
-
       <div className={styles.tiles}>
         <Tile value={`${formatDuration(stats.focusTotal)}`} label="de foco" />
         <Tile value={`${formatDuration(stats.classTotal)}`} label="de clases" />
@@ -190,6 +179,16 @@ export function SummaryView({ week, setWeek }: Props) {
                                   <span className={styles.bar} aria-hidden="true">
                                     <span style={{ width: `${Math.max(4, Math.round((it.min / min) * 100))}%` }} />
                                   </span>
+                                  {it.subs && it.subs.length > 0 && (
+                                    <ul className={styles.subBreak} aria-label={`Subtareas de ${it.label}`}>
+                                      {it.subs.map((sub) => (
+                                        <li key={sub.key}>
+                                          <span>{sub.label}</span>
+                                          <span className={styles.detailMin}>{formatDuration(Math.round(sub.min))}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
                                   <span className="small muted">{itemMeta(it)}</span>
                                 </li>
                               ))}

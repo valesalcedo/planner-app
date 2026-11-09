@@ -1,22 +1,65 @@
 import { type ChangeEvent, useState } from 'react';
 import { ColorPicker } from '../../components/ColorPicker';
-import { Icon } from '../../components/Icon';
+import { Icon, type IconName } from '../../components/Icon';
 import { toISODate } from '../../lib/time';
+import { byVoice, focusPhrase } from '../../lib/voice';
 import { COURSE_COLORS } from '../../store/defaults';
 import { snapshot, useStore } from '../../store/useStore';
-import { useUI } from '../../store/useUI';
-import { byVoice, focusPhrase } from '../../lib/voice';
+import { type SettingsSection, useUI } from '../../store/useUI';
 import type { AppData, Voice } from '../../types';
 import styles from './Settings.module.css';
 import { ThemePicker } from './ThemePicker';
 
 const VOICES: { id: Voice; label: string }[] = [
-  { id: 'femenino', label: 'Enfocada' },
-  { id: 'masculino', label: 'Enfocado' },
+  { id: 'femenino', label: 'Femenino' },
+  { id: 'masculino', label: 'Masculino' },
   { id: 'neutro', label: 'Genérico' },
 ];
 
+export const SECTIONS: { id: SettingsSection; title: string; desc: string; icon: IconName }[] = [
+  { id: 'apariencia', title: 'Apariencia y trato', desc: 'Tema de colores · Cómo te hablo', icon: 'palette' },
+  { id: 'ramos', title: 'Ramos y clases', desc: 'Ramos y sus colores · Horario semanal · Tipos de actividad', icon: 'book' },
+  { id: 'personal', title: 'Actividades personales', desc: 'Categorías y sus colores', icon: 'heart' },
+  { id: 'dia', title: 'Mi día', desc: 'Hora de inicio y fin · Respiro · Traslados', icon: 'sun' },
+  { id: 'estrellas', title: 'Estrellas', desc: 'Por minuto, bonos, rachas y clases', icon: 'star' },
+  { id: 'respaldo', title: 'Respaldo y datos', desc: 'Descargar, importar o borrar todo', icon: 'download' },
+];
+
+/** Ajustes: una lista de categorías. Cada una abre su propia página. */
 export function SettingsScreen() {
+  const openPage = useUI((s) => s.openPage);
+  return (
+    <div className="screen screen--no-nav">
+      <header className="screen-header">
+        <button type="button" className="icon-btn" aria-label="Volver al menú" onClick={() => openPage(null)}>
+          <Icon name="back" />
+        </button>
+        <h1 className="title" style={{ fontSize: 24, flex: 1 }}>
+          Ajustes
+        </h1>
+      </header>
+      <ul className={`card ${styles.list}`}>
+        {SECTIONS.map((sec) => (
+          <li key={sec.id}>
+            <button type="button" className={styles.item} onClick={() => openPage(`ajustes-${sec.id}`)}>
+              <span className={styles.itemIcon} aria-hidden="true">
+                <Icon name={sec.icon} size={20} />
+              </span>
+              <span className={styles.itemText}>
+                <span className={styles.itemTitle}>{sec.title}</span>
+                <span className="small muted">{sec.desc}</span>
+              </span>
+              <Icon name="next" size={16} style={{ color: 'var(--ink-2)', flexShrink: 0 }} />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Página de una categoría de Ajustes. */
+export function SettingsSectionScreen({ section }: { section: SettingsSection }) {
   const courses = useStore((s) => s.courses);
   const categories = useStore((s) => s.categories);
   const saveCategory = useStore((s) => s.saveCategory);
@@ -29,13 +72,14 @@ export function SettingsScreen() {
   const updateSettings = useStore((s) => s.updateSettings);
   const importData = useStore((s) => s.importData);
   const resetData = useStore((s) => s.resetData);
-  const trashCount = useStore((s) => s.trash.length);
   const openPage = useUI((s) => s.openPage);
+  const setTab = useUI((s) => s.setTab);
   const showToast = useUI((s) => s.showToast);
 
   const [newCourse, setNewCourse] = useState('');
   const [newActivity, setNewActivity] = useState('');
   const [newCategory, setNewCategory] = useState('');
+  const meta = SECTIONS.find((x) => x.id === section)!;
 
   const addCourse = () => {
     if (!newCourse.trim()) return;
@@ -72,237 +116,264 @@ export function SettingsScreen() {
   return (
     <div className="screen screen--no-nav">
       <header className="screen-header">
-        <button type="button" className="icon-btn" aria-label="Volver" onClick={() => openPage(null)}>
+        <button type="button" className="icon-btn" aria-label="Volver a Ajustes" onClick={() => openPage('ajustes')}>
           <Icon name="back" />
         </button>
-        <h1 className="title" style={{ fontSize: 24, flex: 1 }}>
-          Ajustes
-        </h1>
+        <div className="stack" style={{ gap: 0, flex: 1 }}>
+          <span className="eyebrow">Ajustes</span>
+          <h1 className="title" style={{ fontSize: 24 }}>
+            {meta.title}
+          </h1>
+        </div>
       </header>
 
-      <ThemePicker />
+      {section === 'apariencia' && (
+        <>
+          <ThemePicker />
+          <section className="card card--lg stack" aria-labelledby="voice-title">
+            <h2 id="voice-title" className="section-title">
+              Cómo te hablo
+            </h2>
+            <div className="field">
+              <div className="segmented" role="group" aria-labelledby="voice-title">
+                {VOICES.map((v) => (
+                  <button key={v.id} type="button" aria-pressed={settings.voice === v.id} onClick={() => updateSettings({ voice: v.id })}>
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+              <span className="small muted">
+                Se usa en todos los textos de la app. Ej.: “{focusPhrase('2 h', '3 h', settings.voice)}” ·{' '}
+                {byVoice(settings.voice, { f: 'logro “Madrugadora”', m: 'logro “Madrugador”', n: 'logro “A primera hora”' })}
+              </span>
+            </div>
+          </section>
+        </>
+      )}
 
-      <section className="card card--lg stack" aria-labelledby="courses-title">
-        <h2 id="courses-title" className="section-title">
-          Ramos
-        </h2>
-        <p className="small muted" style={{ margin: 0 }}>
-          Se usan para separar tu carga académica por curso. Toca el cuadrito para cambiar su color: las clases del ramo se pintan con él.
-        </p>
-        {courses.map((c) => (
-          <div key={c.id} className={styles.courseRow}>
-            <ColorPicker value={c.color} label={c.name} onChange={(color) => saveCourse({ ...c, color })} />
-            <input
-              className="input"
-              aria-label="Nombre del ramo"
-              defaultValue={c.name}
-              onBlur={(e) => e.target.value.trim() && saveCourse({ ...c, name: e.target.value.trim() })}
-            />
-            <button
-              type="button"
-              className="icon-btn icon-btn--plain"
-              aria-label={`Borrar ${c.name}`}
-              onClick={() => confirm(`¿Borrar el ramo "${c.name}"?`) && deleteCourse(c.id)}
-            >
-              <Icon name="trash" size={18} />
-            </button>
-          </div>
-        ))}
-        <form
-          className={styles.addRow}
-          onSubmit={(e) => {
-            e.preventDefault();
-            addCourse();
-          }}
-        >
-          <input className="input" placeholder="Nuevo ramo" aria-label="Nuevo ramo" value={newCourse} onChange={(e) => setNewCourse(e.target.value)} />
-          <button type="submit" className="btn btn--main" disabled={!newCourse.trim()}>
-            Agregar
-          </button>
-        </form>
-      </section>
-
-      <section className="card card--lg stack" aria-labelledby="cats-title">
-        <h2 id="cats-title" className="section-title">
-          Categorías de actividades
-        </h2>
-        <p className="small muted" style={{ margin: 0 }}>
-          Para lo que no es clase: coro, salidas, deporte… Cada categoría tiene su color en el horario y en tu día.
-        </p>
-        {categories.map((c) => (
-          <div key={c.id} className={styles.courseRow}>
-            <ColorPicker value={c.color} label={c.name} onChange={(color) => saveCategory({ ...c, color })} />
-            <input
-              className="input"
-              aria-label="Nombre de la categoría"
-              defaultValue={c.name}
-              onBlur={(e) => e.target.value.trim() && saveCategory({ ...c, name: e.target.value.trim() })}
-            />
-            <button
-              type="button"
-              className="icon-btn icon-btn--plain"
-              aria-label={`Borrar ${c.name}`}
-              onClick={() => confirm(`¿Borrar la categoría "${c.name}"? Las actividades quedan sin categoría.`) && deleteCategory(c.id)}
-            >
-              <Icon name="trash" size={18} />
-            </button>
-          </div>
-        ))}
-        <form
-          className={styles.addRow}
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!newCategory.trim()) return;
-            saveCategory({ name: newCategory.trim(), color: COURSE_COLORS[(categories.length + 6) % COURSE_COLORS.length] });
-            setNewCategory('');
-          }}
-        >
-          <input className="input" placeholder="Nueva categoría" aria-label="Nueva categoría" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} />
-          <button type="submit" className="btn btn--main" disabled={!newCategory.trim()}>
-            Agregar
-          </button>
-        </form>
-      </section>
-
-      <button type="button" className="card row row--between" style={{ border: 'none', minHeight: 56, textAlign: 'left' }} onClick={() => openPage('horario', 'ajustes')}>
-        <span className="stack" style={{ gap: 0 }}>
-          <span style={{ fontWeight: 800 }}>Horario semanal</span>
-          <span className="small muted">Clases y actividades fijas</span>
-        </span>
-        <Icon name="next" />
-      </button>
-
-      <section className="card card--lg stack" aria-labelledby="types-title">
-        <h2 id="types-title" className="section-title">
-          Tipos de actividad
-        </h2>
-        <p className="small muted" style={{ margin: 0 }}>
-          Ajústalos para que calcen con las categorías de tu encuesta de carga académica.
-        </p>
-        {activityTypes.map((a) => (
-          <input key={a.id} className="input" aria-label="Tipo de actividad" defaultValue={a.name} onBlur={(e) => e.target.value.trim() && saveActivityType(e.target.value.trim(), a.id)} />
-        ))}
-        <form
-          className={styles.addRow}
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (newActivity.trim()) saveActivityType(newActivity.trim());
-            setNewActivity('');
-          }}
-        >
-          <input className="input" placeholder="Nuevo tipo" aria-label="Nuevo tipo de actividad" value={newActivity} onChange={(e) => setNewActivity(e.target.value)} />
-          <button type="submit" className="btn btn--main" disabled={!newActivity.trim()}>
-            Agregar
-          </button>
-        </form>
-      </section>
-
-      <section className="card card--lg stack" aria-labelledby="day-title">
-        <h2 id="day-title" className="section-title">
-          Mi día
-        </h2>
-        <div className="field">
-          <span id="st-voice" style={{ fontWeight: 800, fontSize: 14 }}>
-            Cómo te hablo
-          </span>
-          <div className="segmented" role="group" aria-labelledby="st-voice">
-            {VOICES.map((v) => (
-              <button key={v.id} type="button" aria-pressed={settings.voice === v.id} onClick={() => updateSettings({ voice: v.id })}>
-                {v.label}
-              </button>
+      {section === 'ramos' && (
+        <>
+          <section className="card card--lg stack" aria-labelledby="courses-title">
+            <h2 id="courses-title" className="section-title">
+              Ramos
+            </h2>
+            <p className="small muted" style={{ margin: 0 }}>
+              Se usan para separar tu carga académica por curso. Toca el cuadrito para cambiar su color: las clases del ramo se pintan con él.
+            </p>
+            {courses.map((c) => (
+              <div key={c.id} className={styles.courseRow}>
+                <ColorPicker value={c.color} label={c.name} onChange={(color) => saveCourse({ ...c, color })} />
+                <input
+                  className="input"
+                  aria-label="Nombre del ramo"
+                  defaultValue={c.name}
+                  onBlur={(e) => e.target.value.trim() && saveCourse({ ...c, name: e.target.value.trim() })}
+                />
+                <button
+                  type="button"
+                  className="icon-btn icon-btn--plain"
+                  aria-label={`Borrar ${c.name}`}
+                  onClick={() => confirm(`¿Borrar el ramo "${c.name}"?`) && deleteCourse(c.id)}
+                >
+                  <Icon name="trash" size={18} />
+                </button>
+              </div>
             ))}
-          </div>
-          <span className="small muted">Ej.: “{focusPhrase('2 h', '3 h', settings.voice)}”</span>
-        </div>
-        <div className="grid-2">
-          <div className="field">
-            <label htmlFor="st-start">Empiezo a las</label>
-            <input id="st-start" type="time" className="input" value={settings.dayStart} onChange={(e) => e.target.value && updateSettings({ dayStart: e.target.value })} />
-          </div>
-          <div className="field">
-            <label htmlFor="st-end">Termino a las</label>
-            <input id="st-end" type="time" className="input" value={settings.dayEnd} onChange={(e) => e.target.value && updateSettings({ dayEnd: e.target.value })} />
-          </div>
-        </div>
-        <div className="field">
-          <label htmlFor="st-buffer">Respiro entre tareas (min)</label>
-          <input id="st-buffer" type="number" min={0} max={30} inputMode="numeric" className="input" value={settings.bufferMin} onChange={(e) => updateSettings({ bufferMin: Math.max(0, Number(e.target.value) || 0) })} />
-        </div>
-      </section>
+            <form
+              className={styles.addRow}
+              onSubmit={(e) => {
+                e.preventDefault();
+                addCourse();
+              }}
+            >
+              <input className="input" placeholder="Nuevo ramo" aria-label="Nuevo ramo" value={newCourse} onChange={(e) => setNewCourse(e.target.value)} />
+              <button type="submit" className="btn btn--main" disabled={!newCourse.trim()}>
+                Agregar
+              </button>
+            </form>
+          </section>
 
-      <section className="card card--lg stack" aria-labelledby="travel-title">
-        <h2 id="travel-title" className="section-title">
-          Traslados
-        </h2>
-        <label className="switch-row">
-          <span className="stack" style={{ gap: 0 }}>
-            <span style={{ fontWeight: 800, fontSize: 14 }}>Ida y vuelta a la U</span>
-            <span className="small muted">Los días con clases se cuentan como tiempo ocupado. Puedes moverlos o darles inicio al salir.</span>
-          </span>
-          <input type="checkbox" role="switch" className="switch" checked={settings.travelEnabled} onChange={(e) => updateSettings({ travelEnabled: e.target.checked })} />
-        </label>
-        {settings.travelEnabled && (
-          <div className="field">
-            <label htmlFor="st-travel">Me demoro en cada viaje (min)</label>
-            <input id="st-travel" type="number" min={5} max={240} inputMode="numeric" className="input" value={settings.travelMin} onChange={(e) => updateSettings({ travelMin: Math.max(5, Math.min(240, Number(e.target.value) || 0)) })} />
-          </div>
-        )}
-      </section>
-
-      <section className="card card--lg stack" aria-labelledby="stars-title">
-        <h2 id="stars-title" className="section-title">
-          Estrellas
-        </h2>
-        <div className="grid-2">
-          <NumberField id="st-ppm" label="Por minuto" value={settings.starsPerMinute} onChange={(v) => updateSettings({ starsPerMinute: v })} />
-          <NumberField id="st-streak" label="Días para racha" value={settings.streakDays} onChange={(v) => updateSettings({ streakDays: Math.max(1, Math.round(v)) })} />
-          <NumberField id="st-easy" label="Bono tarea fácil" value={settings.bonus.facil} onChange={(v) => updateSettings({ bonus: { ...settings.bonus, facil: v } })} />
-          <NumberField id="st-mid" label="Bono tarea media" value={settings.bonus.media} onChange={(v) => updateSettings({ bonus: { ...settings.bonus, media: v } })} />
-          <NumberField id="st-hard" label="Bono tarea difícil" value={settings.bonus.dificil} onChange={(v) => updateSettings({ bonus: { ...settings.bonus, dificil: v } })} />
-          <NumberField id="st-mult" label="Multiplicador racha" step={0.1} value={settings.streakMultiplier} onChange={(v) => updateSettings({ streakMultiplier: v })} />
-          <NumberField id="st-class" label="Por ir a clases" value={settings.starsPerClass} onChange={(v) => updateSettings({ starsPerClass: Math.round(v) })} />
-        </div>
-      </section>
-
-      <button type="button" className="card row row--between" style={{ border: 'none', minHeight: 56, textAlign: 'left' }} onClick={() => openPage('papelera', 'ajustes')}>
-        <span className="stack" style={{ gap: 0 }}>
-          <span style={{ fontWeight: 800 }}>Papelera</span>
-          <span className="small muted">
-            {trashCount === 0 ? 'Tareas borradas en los últimos 30 días' : `${trashCount} ${trashCount === 1 ? 'tarea borrada' : 'tareas borradas'}`}
-          </span>
-        </span>
-        <Icon name="next" />
-      </button>
-
-      <section className="card card--lg stack" aria-labelledby="backup-title">
-        <h2 id="backup-title" className="section-title">
-          Respaldo
-        </h2>
-        <p className="small muted" style={{ margin: 0 }}>
-          Tus datos viven solo en este iPhone. Descarga un respaldo de vez en cuando por si borras los datos de Safari o cambias de teléfono.
-        </p>
-        <div className="grid-2">
-          <button type="button" className="btn btn--accent" onClick={exportBackup}>
-            Descargar
+          <button type="button" className="card row row--between" style={{ border: 'none', minHeight: 56, textAlign: 'left' }} onClick={() => openPage('horario', 'ajustes-ramos')}>
+            <span className="stack" style={{ gap: 0 }}>
+              <span style={{ fontWeight: 800 }}>Horario semanal</span>
+              <span className="small muted">Clases y actividades fijas</span>
+            </span>
+            <Icon name="next" />
           </button>
-          <label className="btn" style={{ border: '2px solid var(--accent)' }}>
-            Importar
-            <input type="file" accept="application/json,.json" className="sr-only" onChange={importBackup} />
-          </label>
-        </div>
-        <button
-          type="button"
-          className="btn btn--danger"
-          onClick={() => {
-            if (confirm('¿Borrar todos los datos? No se puede deshacer.') && confirm(`${byVoice(settings.voice, { f: '¿Segura?', m: '¿Seguro?', n: '¿Confirmas?' })} Descarga un respaldo antes si lo necesitas.`)) {
-              resetData();
-              openPage(null);
-            }
-          }}
-        >
-          Borrar todo
-        </button>
-      </section>
+
+          <section className="card card--lg stack" aria-labelledby="types-title">
+            <h2 id="types-title" className="section-title">
+              Tipos de actividad
+            </h2>
+            <p className="small muted" style={{ margin: 0 }}>
+              Ajústalos para que calcen con las categorías de tu encuesta de carga académica.
+            </p>
+            {activityTypes.map((a) => (
+              <input key={a.id} className="input" aria-label="Tipo de actividad" defaultValue={a.name} onBlur={(e) => e.target.value.trim() && saveActivityType(e.target.value.trim(), a.id)} />
+            ))}
+            <form
+              className={styles.addRow}
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (newActivity.trim()) saveActivityType(newActivity.trim());
+                setNewActivity('');
+              }}
+            >
+              <input className="input" placeholder="Nuevo tipo" aria-label="Nuevo tipo de actividad" value={newActivity} onChange={(e) => setNewActivity(e.target.value)} />
+              <button type="submit" className="btn btn--main" disabled={!newActivity.trim()}>
+                Agregar
+              </button>
+            </form>
+          </section>
+
+        </>
+      )}
+
+      {section === 'personal' && (
+        <>
+          <section className="card card--lg stack" aria-labelledby="cats-title">
+            <h2 id="cats-title" className="section-title">
+              Categorías de actividades
+            </h2>
+            <p className="small muted" style={{ margin: 0 }}>
+              Para lo que no es clase: coro, salidas, deporte… Cada categoría tiene su color en el horario y en tu día.
+            </p>
+            {categories.map((c) => (
+              <div key={c.id} className={styles.courseRow}>
+                <ColorPicker value={c.color} label={c.name} onChange={(color) => saveCategory({ ...c, color })} />
+                <input
+                  className="input"
+                  aria-label="Nombre de la categoría"
+                  defaultValue={c.name}
+                  onBlur={(e) => e.target.value.trim() && saveCategory({ ...c, name: e.target.value.trim() })}
+                />
+                <button
+                  type="button"
+                  className="icon-btn icon-btn--plain"
+                  aria-label={`Borrar ${c.name}`}
+                  onClick={() => confirm(`¿Borrar la categoría "${c.name}"? Las actividades quedan sin categoría.`) && deleteCategory(c.id)}
+                >
+                  <Icon name="trash" size={18} />
+                </button>
+              </div>
+            ))}
+            <form
+              className={styles.addRow}
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newCategory.trim()) return;
+                saveCategory({ name: newCategory.trim(), color: COURSE_COLORS[(categories.length + 6) % COURSE_COLORS.length] });
+                setNewCategory('');
+              }}
+            >
+              <input className="input" placeholder="Nueva categoría" aria-label="Nueva categoría" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} />
+              <button type="submit" className="btn btn--main" disabled={!newCategory.trim()}>
+                Agregar
+              </button>
+            </form>
+          </section>
+
+        </>
+      )}
+
+      {section === 'dia' && (
+        <>
+          <section className="card card--lg stack" aria-labelledby="day-title">
+            <h2 id="day-title" className="section-title">
+              Horario del día
+            </h2>
+            <div className="grid-2">
+              <div className="field">
+                <label htmlFor="st-start">Empiezo a las</label>
+                <input id="st-start" type="time" className="input" value={settings.dayStart} onChange={(e) => e.target.value && updateSettings({ dayStart: e.target.value })} />
+              </div>
+              <div className="field">
+                <label htmlFor="st-end">Termino a las</label>
+                <input id="st-end" type="time" className="input" value={settings.dayEnd} onChange={(e) => e.target.value && updateSettings({ dayEnd: e.target.value })} />
+              </div>
+            </div>
+            <div className="field">
+              <label htmlFor="st-buffer">Respiro entre tareas (min)</label>
+              <input id="st-buffer" type="number" min={0} max={30} inputMode="numeric" className="input" value={settings.bufferMin} onChange={(e) => updateSettings({ bufferMin: Math.max(0, Number(e.target.value) || 0) })} />
+            </div>
+          </section>
+
+          <section className="card card--lg stack" aria-labelledby="travel-title">
+            <h2 id="travel-title" className="section-title">
+              Traslados
+            </h2>
+            <label className="switch-row">
+              <span className="stack" style={{ gap: 0 }}>
+                <span style={{ fontWeight: 800, fontSize: 14 }}>Ida y vuelta a la U</span>
+                <span className="small muted">Los días con clases se agregan solos y cuentan como tiempo ocupado. Cualquier día puedes agregar uno a mano en Hoy, moverlo o cambiar cuánto dura.</span>
+              </span>
+              <input type="checkbox" role="switch" className="switch" checked={settings.travelEnabled} onChange={(e) => updateSettings({ travelEnabled: e.target.checked })} />
+            </label>
+            {settings.travelEnabled && (
+              <div className="field">
+                <label htmlFor="st-travel">Me demoro en cada viaje (min, de siempre)</label>
+                <input id="st-travel" type="number" min={5} max={240} inputMode="numeric" className="input" value={settings.travelMin} onChange={(e) => updateSettings({ travelMin: Math.max(5, Math.min(240, Number(e.target.value) || 0)) })} />
+              </div>
+            )}
+          </section>
+
+        </>
+      )}
+
+      {section === 'estrellas' && (
+        <>
+          <section className="card card--lg stack" aria-labelledby="stars-title">
+            <h2 id="stars-title" className="section-title">
+              Estrellas
+            </h2>
+            <div className="grid-2">
+              <NumberField id="st-ppm" label="Por minuto" value={settings.starsPerMinute} onChange={(v) => updateSettings({ starsPerMinute: v })} />
+              <NumberField id="st-streak" label="Días para racha" value={settings.streakDays} onChange={(v) => updateSettings({ streakDays: Math.max(1, Math.round(v)) })} />
+              <NumberField id="st-easy" label="Bono tarea fácil" value={settings.bonus.facil} onChange={(v) => updateSettings({ bonus: { ...settings.bonus, facil: v } })} />
+              <NumberField id="st-mid" label="Bono tarea media" value={settings.bonus.media} onChange={(v) => updateSettings({ bonus: { ...settings.bonus, media: v } })} />
+              <NumberField id="st-hard" label="Bono tarea difícil" value={settings.bonus.dificil} onChange={(v) => updateSettings({ bonus: { ...settings.bonus, dificil: v } })} />
+              <NumberField id="st-mult" label="Multiplicador racha" step={0.1} value={settings.streakMultiplier} onChange={(v) => updateSettings({ streakMultiplier: v })} />
+              <NumberField id="st-class" label="Por ir a clases" value={settings.starsPerClass} onChange={(v) => updateSettings({ starsPerClass: Math.round(v) })} />
+            </div>
+          </section>
+
+        </>
+      )}
+
+      {section === 'respaldo' && (
+        <>
+          <section className="card card--lg stack" aria-labelledby="backup-title">
+            <h2 id="backup-title" className="section-title">
+              Respaldo
+            </h2>
+            <p className="small muted" style={{ margin: 0 }}>
+              Tus datos viven solo en este iPhone. Descarga un respaldo de vez en cuando por si borras los datos de Safari o cambias de teléfono.
+            </p>
+            <div className="grid-2">
+              <button type="button" className="btn btn--accent" onClick={exportBackup}>
+                Descargar
+              </button>
+              <label className="btn" style={{ border: '2px solid var(--accent)' }}>
+                Importar
+                <input type="file" accept="application/json,.json" className="sr-only" onChange={importBackup} />
+              </label>
+            </div>
+            <button
+              type="button"
+              className="btn btn--danger"
+              onClick={() => {
+                if (confirm('¿Borrar todos los datos? No se puede deshacer.') && confirm(`${byVoice(settings.voice, { f: '¿Segura?', m: '¿Seguro?', n: '¿Confirmas?' })} Descarga un respaldo antes si lo necesitas.`)) {
+                  resetData();
+                  openPage(null);
+                  setTab('hoy');
+                }
+              }}
+            >
+              Borrar todo
+            </button>
+          </section>
+        </>
+      )}
     </div>
   );
 }

@@ -60,3 +60,12 @@
   margin-top: -8px;
   min-height: 32px;
 }
+
+.autoNote {
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--mint);
+  color: var(--mint-ink);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}

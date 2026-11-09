@@ -8,7 +8,8 @@ import { doneBlocksFor, doneDayOf } from '../../lib/doneBlocks';
 import { buildUnits, busyBlocksFor, planDay, travelBlocksFor } from '../../lib/scheduler';
 import { minutesOn, taskDays } from '../../lib/spread';
 import { focusPhrase } from '../../lib/voice';
-import { addDays, formatDuration, formatLongDate, minutesOfDay, today, tsAt } from '../../lib/time';
+import { WEEKDAYS, addDays, formatDuration, formatLongDate, formatShortDate, minutesOfDay, toISODate, today, tsAt, weekdayOf } from '../../lib/time';
+import { MonthPicker } from '../../components/MonthPicker';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
 import { DayTimeline } from './DayTimeline';
@@ -22,6 +23,7 @@ export function TodayScreen() {
   const todayDate = today(new Date(now));
   const [date, setDate] = useState(todayDate);
   const [view, setView] = useState<View>('dia');
+  const [picking, setPicking] = useState(false);
 
   const tasks = useStore((s) => s.tasks);
   const entries = useStore((s) => s.entries);
@@ -34,7 +36,6 @@ export function TodayScreen() {
   const pins = useStore((s) => s.pins[date]);
   const activeTimer = useStore((s) => s.activeTimer);
   const openTaskForm = useUI((s) => s.openTaskForm);
-  const openPage = useUI((s) => s.openPage);
   const { streak, multiplier } = useStreak();
 
   const isToday = date === todayDate;
@@ -63,6 +64,15 @@ export function TodayScreen() {
     return planDay(units, busyBlocksFor(date, weekly, events, skipped, attendance), settings, fromMin, { travel, pins });
   }, [dayTasks, entries, date, weekly, events, skipped, attendance, settings, isToday, isPast, now, travelOverrides, pins, subDays, todayDate]);
 
+  // Días con tareas o tiempo registrado, para marcarlos en el calendario de "Ir a un día".
+  const markedDays = useMemo(() => {
+    if (!picking) return undefined;
+    const set = new Set<string>();
+    for (const t of tasks) set.add(t.done ? doneDayOf(t) : t.date);
+    for (const e of entries) set.add(toISODate(new Date(e.start)));
+    return set;
+  }, [picking, tasks, entries]);
+
   const rolledOver = isPast ? dayTasks.filter((t) => !t.done).length : 0;
 
   // Lo hecho se queda en las horas en que se trabajó (aunque la tarea fuera de otro día).
@@ -89,25 +99,18 @@ export function TodayScreen() {
           <span className="eyebrow">{formatLongDate(date)}</span>
           <h1 className="title">{isToday ? 'Hoy' : isPast ? 'Día pasado' : 'Planificación'}</h1>
         </div>
-        <div className="row">
-          <button type="button" className="icon-btn" aria-label="Ajustes" onClick={() => openPage('ajustes')}>
-            <Icon name="gear" />
-          </button>
-          <StarBadge />
-        </div>
+        <StarBadge />
       </header>
 
       <div className={styles.dayNav}>
         <button type="button" className="icon-btn" aria-label="Día anterior" onClick={() => setDate(addDays(date, -1))}>
           <Icon name="back" />
         </button>
-        {!isToday ? (
-          <button type="button" className="btn btn--sm" onClick={() => setDate(todayDate)}>
-            Volver a hoy
-          </button>
-        ) : (
-          <span className="small muted">{dayTasks.filter((t) => !t.done).length} tareas pendientes</span>
-        )}
+        <button type="button" className={`btn btn--sm ${styles.datePick}`} aria-label="Ir a un día" onClick={() => setPicking(true)}>
+          <Icon name="calendar" size={18} />
+          {isToday ? `Hoy · ${shortDay(date)}` : shortDay(date)}
+          <Icon name="down" size={16} />
+        </button>
         <button type="button" className="icon-btn" aria-label="Día siguiente" onClick={() => setDate(addDays(date, 1))}>
           <Icon name="next" />
         </button>
@@ -153,9 +156,28 @@ export function TodayScreen() {
         <TaskList tasks={dayTasks} date={date} days={subDays} todayDate={todayDate} />
       )}
 
+      {picking && (
+        <MonthPicker
+          title="Ir a un día"
+          value={date}
+          todayDate={todayDate}
+          marked={markedDays}
+          onClose={() => setPicking(false)}
+          onPick={(d) => {
+            setDate(d);
+            setPicking(false);
+          }}
+        />
+      )}
+
       <button type="button" className={styles.fab} aria-label="Nueva tarea" onClick={() => openTaskForm({ date })}>
         <Icon name="plus" size={28} strokeWidth={2.6} />
       </button>
     </div>
   );
+}
+
+/** "sáb 14 nov". */
+function shortDay(d: string): string {
+  return `${WEEKDAYS[weekdayOf(d)].slice(0, 3).toLowerCase()} ${formatShortDate(d)}`;
 }

@@ -6,19 +6,20 @@ Es una PWA (app web instalable): se publica gratis en GitHub Pages y se agrega a
 
 ## Qué hace
 
-- **Hoy**: tu día ordenado automáticamente. Lo que vence hoy o marcas "sí o sí" va primero, lo fácil y corto va entre clases y lo que no alcanza se puede pasar a mañana. Si un día no hay clase, la marcas con "No hay" y se libera ese tiempo.
-- **Tareas** con tiempo estimado, dificultad, fecha de entrega, ramo, tipo de actividad y subtareas que se pueden avanzar en momentos distintos.
+- **Hoy**: tu día ordenado automáticamente. Lo que vence hoy o marcas "sí o sí" va primero, lo fácil y corto va entre clases y lo que no alcanza se puede pasar a mañana. Si un día no hay clase, la marcas con "No hay" y se libera ese tiempo. Cada tarea lleva una etiqueta con el nombre de su ramo pintada de su color. Tocando la fecha se abre un calendario para saltar a cualquier día, pasado o futuro.
+- **Tareas** con rango **Desde–Hasta**, tiempo estimado, dificultad, ramo, tipo de actividad y subtareas que se pueden avanzar en momentos distintos. Una tarea sin subtareas va sola al día del rango con más tiempo libre (o al que elijas). Una tarea terminada queda en el último día en que le registraste horas.
 - **Reparto entre días**: si una tarea tiene fecha de inicio, fecha de entrega y subtareas, las subtareas se reparten solas entre esos días según tu tiempo libre. Si una no cabe en un día pasa al siguiente, y lo que no alcanzaste se vuelve a repartir. También puedes elegir a mano el día de cada subtarea.
 - **Foco**: cronómetro por tarea o subtarea. Sigue contando aunque cierres la app, porque guarda la hora de inicio.
 - **Calendario** con evaluaciones, entregas y eventos, más tu horario semanal de clases.
-- **Semana**: abre en **Progreso**, con un anillo grande del % de tareas completadas, tus horas de foco y la comparación con la semana pasada, más un anillo por ramo. Al tocar un ramo ves en qué se fue el tiempo, tu asistencia, la próxima evaluación y lo que te falta. En **Resumen** están las horas de foco por día, tareas hechas y la tabla de **carga académica** por ramo y tipo de actividad, con botón para copiarla. Úsala con "Semana pasada" cuando llenes la encuesta.
+- **Semana**: abre en **Progreso**, con un anillo grande del % de tareas completadas, tus horas de foco y la comparación con la semana pasada, más un anillo por ramo. Al tocar un ramo ves en qué se fue el tiempo, tu asistencia, la próxima evaluación y lo que te falta. En **Resumen** están el foco por día, tareas hechas y la tabla de **carga académica** por ramo y tipo de actividad, todo en horas y minutos; al abrir una fila ves cada tarea y el tiempo de cada subtarea. Tocando la semana eliges cualquiera de las anteriores (de una lista o en el calendario). Úsala con "Semana pasada" cuando llenes la encuesta.
 - **Asistencia**: en Hoy marcas cada clase como "Fui", "Falté" o "No hubo". Ir a clases suma estrellas y en Semana ves tu porcentaje de asistencia por ramo.
 - **Colores**: cada ramo y cada categoría de actividad (coro, salidas, etc.) tiene su color, de la paleta o elegido a mano, y así se pintan en el horario y en tu día.
 - **Tienda de permisos**: 1 estrella por minuto de foco, bono por tarea terminada según dificultad, estrellas por ir a clases y multiplicador por racha. Los premios y precios los defines tú.
-- **Menú**: la última pestaña. Desde ahí entras a la Tienda, a tus Logros, al tema de colores, al horario semanal, a Ajustes y a la Papelera.
-- **Logros**: 22 medallas en seis grupos (clases, foco, tareas, rachas, ramos y hábitos), algunas con niveles bronce, plata y oro. Se calculan solas con tus datos, cada nivel da estrellas una sola vez y nunca se pierden.
-- **Temas**: en Ajustes cada persona elige los colores de toda la app: 9 temas listos (incluidos dos oscuros) o uno propio con su color principal, su acento y modo oscuro. Los datos y el tema viven en cada teléfono, así que cada amiga tiene el suyo.
-- **Ajustes**: ramos, tipos de actividad, horario del día, reglas de estrellas y respaldo (descargar e importar).
+- **Menú**: la última pestaña. Desde ahí entras a la Tienda, a tus Logros, al horario semanal, a Ajustes y a la Papelera.
+- **Logros**: 21 medallas en seis grupos (clases, foco, tareas, rachas, ramos y hábitos), algunas con niveles bronce, plata y oro. Se calculan solas con tus datos, cada nivel da estrellas una sola vez y nunca se pierden.
+- **Temas**: en Ajustes › Apariencia y trato cada persona elige los colores de toda la app: 9 temas listos (incluidos dos oscuros) o uno propio con su color principal, su acento y modo oscuro. Los datos y el tema viven en cada teléfono, así que cada amiga tiene el suyo.
+- **Ajustes** (desde el Menú), por categorías: Apariencia y trato (tema y cómo te habla la app: femenino, masculino o genérico, en todos los textos), Ramos y clases, Actividades personales, Mi día, Estrellas, y Respaldo y datos.
+- **Papelera** (desde el Menú): una tarea borrada sale de todas partes (su tiempo, sus estrellas y su bono) y vuelve con todo si la recuperas antes de 30 días.
 
 ## Subirla a GitHub y publicarla
 
@@ -92,5 +93,5 @@ Los colores del tema original están en `src/styles/tokens.css`. Los demás tema
 3. En los huecos largos va primero lo urgente (vence hoy o "sí o sí"), luego lo que vence mañana, y a igual urgencia lo más difícil. Si una tarea no cabe entera, se agenda un trozo de al menos 25 min.
 4. Las subtareas se agendan en orden y el tiempo que ya cronometraste se descuenta del estimado.
 5. Lo que no cabe aparece en "No alcanza hoy".
-6. Los días con clases agrega dos traslados (ida y vuelta, 1 h cada uno, ajustable en Ajustes). Cuentan como tiempo ocupado y solo reciben tareas marcadas "Se puede en el transporte". Puedes moverlos o quitarlos ese día.
+6. Los días con clases agrega dos traslados (ida y vuelta, 1 h cada uno, ajustable en Ajustes › Mi día). Cuentan como tiempo ocupado y solo reciben tareas marcadas "Se puede en el transporte". Puedes moverlos, cambiarles la duración o quitarlos ese día, y cualquier día (por ejemplo un fin de semana) puedes agregarlos a mano.
 7. Las tareas que arrastras (desde el ícono de puntitos) quedan fijadas en esa hora o traslado, y el resto se reordena alrededor. Tocar los puntitos abre "Mover" para elegir la hora exacta; "Fijada ×" la suelta.

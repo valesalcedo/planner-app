@@ -4,7 +4,7 @@ import { Sheet } from '../../components/Sheet';
 import { useNow } from '../../hooks/useNow';
 import { useSubtaskDays } from '../../hooks/useSubtaskDays';
 import { uid } from '../../lib/id';
-import { isSpread, subtaskDay } from '../../lib/spread';
+import { isRanged, isSpread, subtaskDay, taskDay } from '../../lib/spread';
 import { addDays, formatDuration, today } from '../../lib/time';
 import { dayLabel } from '../today/TaskList';
 import { COURSE_COLORS } from '../../store/defaults';
@@ -40,6 +40,7 @@ export function TaskForm() {
   const [title, setTitle] = useState(existing?.title ?? '');
   const [date, setDate] = useState(existing?.date ?? formState?.date ?? today());
   const [deadline, setDeadline] = useState(existing?.deadline ?? '');
+  const [day, setDay] = useState(existing?.day ?? '');
   const [personal, setPersonal] = useState(existing?.personal ?? false);
   const [courseId, setCourseId] = useState(existing?.courseId ?? '');
   const [categoryId, setCategoryId] = useState(existing?.categoryId ?? '');
@@ -60,6 +61,8 @@ export function TaskForm() {
       title,
       date,
       deadline: deadline || undefined,
+      // El día automático se calcula sin el elegido a mano, para poder mostrarlo como opción.
+      day: undefined,
       mustToday,
       subtasks: subtasks.filter((s) => s.title.trim() || s.estimateMin > 0).map((s) => ({ ...s, estimateMin: Math.max(1, s.estimateMin || 0) })),
     }),
@@ -67,6 +70,9 @@ export function TaskForm() {
   );
   const draftDays = useSubtaskDays(now, draft);
   const spreads = isSpread(draft);
+  const ranged = isRanged(draft);
+  const autoDay = ranged ? taskDay(draft, draftDays, todayDate) : undefined;
+  const dayInRange = ranged && !!day && day >= date && day <= deadline ? day : '';
   const firstDay = date > todayDate ? date : todayDate;
   // Días que se pueden elegir para una subtarea: del inicio a la entrega (o dos semanas).
   const dayOptions = useMemo(() => {
@@ -90,6 +96,7 @@ export function TaskForm() {
       title: title.trim(),
       date,
       deadline: deadline || undefined,
+      day: dayInRange || undefined,
       personal: personal || undefined,
       courseId: personal ? undefined : courseId || undefined,
       categoryId: personal ? categoryId || undefined : undefined,
@@ -103,7 +110,8 @@ export function TaskForm() {
     if (!data.title) return;
     if (existing) updateTask(existing.id, data);
     else addTask(data);
-    showToast(existing ? 'Tarea actualizada' : 'Tarea agregada a tu día');
+    const when = ranged && autoDay ? dayLabel(dayInRange || autoDay, todayDate) : null;
+    showToast(existing ? 'Tarea actualizada' : when ? `Tarea agregada para ${when}` : 'Tarea agregada a tu día');
     close();
   };
 
@@ -141,14 +149,35 @@ export function TaskForm() {
 
         <div className="grid-2">
           <div className="field">
-            <label htmlFor="tf-date">{deadline && subtasks.length > 0 ? 'Empezar el día' : 'Hacer el día'}</label>
+            <label htmlFor="tf-date">Desde</label>
             <input id="tf-date" type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} required />
           </div>
           <div className="field">
-            <label htmlFor="tf-deadline">Fecha de entrega</label>
-            <input id="tf-deadline" type="date" className="input" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+            <label htmlFor="tf-deadline">Hasta</label>
+            <input id="tf-deadline" type="date" className="input" value={deadline} min={date} onChange={(e) => setDeadline(e.target.value)} />
           </div>
         </div>
+
+        {ranged && autoDay && (
+          <div className="field">
+            <label htmlFor="tf-day">Día en que la hago</label>
+            <select id="tf-day" className="input" value={dayInRange} onChange={(e) => setDay(e.target.value)}>
+              <option value="">Automático · {dayLabel(autoDay, todayDate)}</option>
+              {dayOptions
+                .filter((d) => d >= date && d <= deadline)
+                .map((d) => (
+                  <option key={d} value={d}>
+                    {dayLabel(d, todayDate)}
+                  </option>
+                ))}
+            </select>
+            <span className={styles.autoNote}>
+              {dayInRange
+                ? `La elegiste para ${dayLabel(dayInRange, todayDate)}.`
+                : `La puse para ${dayLabel(autoDay, todayDate)}: es el día con más tiempo libre entre ${dayLabel(date > todayDate ? date : todayDate, todayDate)} y ${dayLabel(deadline, todayDate)}. Si cambia tu carga, se reacomoda sola.`}
+            </span>
+          </div>
+        )}
 
         <div className="segmented" role="group" aria-label="Tipo de tarea">
           <button type="button" aria-pressed={!personal} onClick={() => setPersonal(false)}>
@@ -210,7 +239,7 @@ export function TaskForm() {
               </div>
             </div>
             {courses.length === 0 && (
-              <button type="button" className={styles.link} onClick={() => { close(); openPage('ajustes'); }}>
+              <button type="button" className={styles.link} onClick={() => { close(); openPage('ajustes-ramos'); }}>
                 Agrega tus ramos en Ajustes para ver tu carga académica por curso
               </button>
             )}
@@ -260,7 +289,7 @@ export function TaskForm() {
 
         <label className="card switch-row">
           <span className="stack" style={{ gap: 0 }}>
-            <span style={{ fontWeight: 800, fontSize: 14 }}>Sí o sí ese día</span>
+            <span style={{ fontWeight: 800, fontSize: 14 }}>{deadline ? 'Sí o sí el día “Desde”' : 'Sí o sí ese día'}</span>
             <span className="small muted">Se agenda temprano y no se posterga</span>
           </span>
           <input type="checkbox" role="switch" className="switch" checked={mustToday} onChange={(e) => setMustToday(e.target.checked)} />
@@ -279,7 +308,7 @@ export function TaskForm() {
           <p className="small muted" style={{ margin: 0 }}>
             {spreads
               ? `Se reparten solas entre ${dayLabel(firstDay, todayDate)} y ${dayLabel(deadline > firstDay ? deadline : firstDay, todayDate)} según tu tiempo libre. Si una no cabe en un día, pasa al siguiente. También puedes elegir el día de cada una.`
-              : 'Se pueden avanzar en momentos distintos. Con fecha de entrega, se reparten solas entre los días que tienes.'}
+              : 'Se pueden avanzar en momentos distintos. Con fecha Hasta, se reparten solas entre los días que tienes.'}
           </p>
           {subtasks.map((s, i) => (
             <div key={s.id} className={styles.subItem}>

@@ -4,7 +4,9 @@ import type { ISODate } from '../types';
 export type Tab = 'hoy' | 'calendario' | 'foco' | 'stats' | 'menu' | 'tienda' | 'logros';
 /** Vista de la pestaña Semana. */
 export type StatsView = 'progreso' | 'resumen';
-export type Page = 'ajustes' | 'horario' | 'papelera' | null;
+/** Secciones de Ajustes: cada una es su propia página. */
+export type SettingsSection = 'apariencia' | 'ramos' | 'personal' | 'dia' | 'estrellas' | 'respaldo';
+export type Page = 'ajustes' | `ajustes-${SettingsSection}` | 'horario' | 'papelera' | null;
 
 interface TaskFormState {
   taskId?: string;

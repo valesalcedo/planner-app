@@ -100,4 +100,33 @@ describe('weekStats', () => {
       }
     }
   });
+
+  it('separa el tiempo de una tarea por subtarea, en el orden de la tarea', () => {
+    const data = initialData();
+    data.tasks = [
+      {
+        id: 't', title: 'Guía', date: '2026-10-12', mustToday: false, difficulty: 'media', estimateMin: 90,
+        activityId: 'estudio', done: false, createdAt: 0,
+        subtasks: [
+          { id: 's1', title: 'Parte 1', estimateMin: 30, done: true },
+          { id: 's2', title: 'Parte 2', estimateMin: 60, done: false },
+        ],
+      },
+    ];
+    const at = (h: number, min: number) => ({ start: tsAt('2026-10-13', h * 60), end: tsAt('2026-10-13', h * 60 + min) });
+    data.entries = [
+      { id: 'a', taskId: 't', subtaskId: 's2', activityId: 'estudio', ...at(10, 40) },
+      { id: 'b', taskId: 't', subtaskId: 's1', activityId: 'estudio', ...at(12, 25) },
+      { id: 'c', taskId: 't', subtaskId: 's2', activityId: 'estudio', ...at(14, 20) },
+      { id: 'd', taskId: 't', activityId: 'estudio', ...at(16, 15) },
+    ];
+    const s = weekStats(data, '2026-10-12', tsAt('2026-10-19', 0));
+    const item = s.loadItems.get(loadKey(NO_COURSE, 'estudio'))![0];
+    expect(item.min).toBe(100);
+    expect(item.subs).toEqual([
+      { key: 's1', label: 'Parte 1', min: 25 },
+      { key: 's2', label: 'Parte 2', min: 60 },
+      { key: '__general__', label: 'Sin subtarea', min: 15 },
+    ]);
+  });
 });

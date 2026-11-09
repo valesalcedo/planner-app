@@ -52,13 +52,16 @@ export interface LoadItem {
   /** Solo tareas: si está terminada. */
   done?: boolean;
   taskId?: string;
+  /** Solo tareas con subtareas: tiempo de cada subtarea, en el orden de la tarea. */
+  subs?: { key: string; label: string; min: number }[];
 }
 
 export function loadKey(course: string, activity: string): string {
   return `${course}|${activity}`;
 }
 
-type LoadPart = Pick<LoadItem, 'key' | 'kind' | 'label'> & Partial<Pick<LoadItem, 'done' | 'taskId'>> & { manual?: boolean };
+type LoadPart = Pick<LoadItem, 'key' | 'kind' | 'label'> &
+  Partial<Pick<LoadItem, 'done' | 'taskId'>> & { manual?: boolean; sub?: { key: string; label: string; order: number } };
 
 function addLoad(
   load: Map<string, Map<string, number>>,
@@ -76,9 +79,15 @@ function addLoad(
 
   const k = loadKey(course, activity);
   const bucket = items.get(k) ?? new Map<string, LoadItem>();
-  const { manual, ...rest } = part;
+  const { manual, sub, ...rest } = part;
   const item = bucket.get(part.key) ?? { ...rest, min: 0, days: [], count: 0, manualMin: 0 };
   item.min += min;
+  if (sub) {
+    const subs = (item.subs ??= []) as (NonNullable<LoadItem['subs']>[number] & { order?: number })[];
+    const found = subs.find((x) => x.key === sub.key);
+    if (found) found.min += min;
+    else subs.push({ key: sub.key, label: sub.label, min, order: sub.order });
+  }
   item.count++;
   if (manual) item.manualMin += min;
   if (!item.days.includes(day)) item.days.push(day);
@@ -115,7 +124,16 @@ export function weekStats(data: StatsInput, weekStart: ISODate, now = Date.now()
       personal.set(cat, (personal.get(cat) ?? 0) + min);
     } else {
       const task = taskById.get(e.taskId);
+      const taskSubs = task?.subtasks ?? [];
+      const subIdx = e.subtaskId ? taskSubs.findIndex((x) => x.id === e.subtaskId) : -1;
+      const sub =
+        taskSubs.length > 0
+          ? subIdx >= 0
+            ? { key: e.subtaskId!, label: taskSubs[subIdx].title, order: subIdx }
+            : { key: '__general__', label: e.subtaskId ? 'Subtarea borrada' : 'Sin subtarea', order: 9999 }
+          : undefined;
       addLoad(load, items, e.courseId ?? NO_COURSE, e.activityId, min, days[dayIdx], {
+        sub,
         key: `t:${e.taskId}`,
         kind: 'tarea',
         label: task?.title ?? 'Tarea borrada',
@@ -190,7 +208,17 @@ export function weekStats(data: StatsInput, weekStart: ISODate, now = Date.now()
     loadItems: new Map(
       [...items.entries()].map(([k, bucket]) => [
         k,
-        [...bucket.values()].map((it) => ({ ...it, days: [...it.days].sort() })).sort((a, b) => b.min - a.min),
+        [...bucket.values()]
+          .map((it) => ({
+            ...it,
+            days: [...it.days].sort(),
+            subs: it.subs
+              ? [...(it.subs as (NonNullable<LoadItem['subs']>[number] & { order?: number })[])]
+                  .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                  .map(({ key, label, min }) => ({ key, label, min }))
+              : undefined,
+          }))
+          .sort((a, b) => b.min - a.min),
       ]),
     ),
     personal,

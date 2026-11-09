@@ -58,9 +58,14 @@ export function CalendarScreen() {
       (selected < todayDate || t.done ? t.date === selected : taskDays(t, subDays, todayDate).includes(selected)),
   );
   const upcoming = events
-    .filter((e) => e.kind === 'evaluacion' && e.date > selected)
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .filter((e) => e.kind === 'evaluacion' && e.date >= todayDate)
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.start ?? '').localeCompare(b.start ?? ''))
     .slice(0, 3);
+  const daysUntil = (d: string) => Math.round((parseISODate(d).getTime() - parseISODate(todayDate).getTime()) / 86_400_000);
+  const inDays = (d: string) => {
+    const n = daysUntil(d);
+    return n === 0 ? 'hoy' : n === 1 ? 'mañana' : `en ${n} días`;
+  };
 
   return (
     <div className="screen">
@@ -77,6 +82,29 @@ export function CalendarScreen() {
           </button>
         </div>
       </header>
+
+      {upcoming.length > 0 && (
+        <section className={styles.upcoming} aria-label="Próximas evaluaciones">
+          {upcoming.map((e) => {
+            const color = course(e.courseId)?.color;
+            return (
+              <button
+                key={e.id}
+                type="button"
+                className={styles.strip}
+                style={color ? { background: color, color: inkOn(color) } : undefined}
+                onClick={() => {
+                  setSelected(e.date);
+                  setMonth(e.date.slice(0, 7));
+                }}
+              >
+                <span className={styles.stripName}>{e.title}</span>
+                <span className={styles.stripWhen}>{inDays(e.date)}</span>
+              </button>
+            );
+          })}
+        </section>
+      )}
 
       <div className="card card--lg stack" style={{ gap: 6, padding: 12 }}>
         <div className={styles.weekHead} aria-hidden="true">
@@ -172,19 +200,6 @@ export function CalendarScreen() {
         </button>
       </div>
 
-      {upcoming.length > 0 && (
-        <section className="card stack" aria-labelledby="up-title">
-          <h2 id="up-title" className="section-title">
-            Próximas evaluaciones
-          </h2>
-          {upcoming.map((e) => (
-            <div key={e.id} className="row row--between small">
-              <span style={{ fontWeight: 700 }}>{e.title}</span>
-              <span className="muted">{formatLongDate(e.date)}</span>
-            </div>
-          ))}
-        </section>
-      )}
 
       {editing && (
         <EventForm event={editing === 'new' ? undefined : editing} date={selected} onClose={() => setEditing(null)} />
