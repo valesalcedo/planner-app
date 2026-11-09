@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { balanceOf, classRef, earnedBetween } from '../lib/rewards';
-import { today } from '../lib/time';
+import { addDays, today } from '../lib/time';
 import { useStore } from './useStore';
 
 const st = () => useStore.getState();
@@ -210,7 +210,7 @@ describe('cambiar el ramo de una tarea', () => {
 
   it('el tiempo ya registrado pasa al ramo nuevo', () => {
     const id = addTestTask();
-    st().addManualEntry({ taskId: id, date: today(), start: '08:00', end: '09:00' });
+    st().addManualEntry({ taskId: id, date: addDays(today(), -1), start: '08:00', end: '09:00' });
     expect(st().entries[0].courseId).toBeUndefined();
     st().updateTask(id, { courseId: 'ramo-x', activityId: 'tareas' });
     const e = st().entries.find((x) => x.taskId === id)!;
@@ -221,7 +221,7 @@ describe('cambiar el ramo de una tarea', () => {
 
   it('cambiar solo el título no toca los registros', () => {
     const id = addTestTask();
-    st().addManualEntry({ taskId: id, date: today(), start: '08:00', end: '09:00' });
+    st().addManualEntry({ taskId: id, date: addDays(today(), -1), start: '08:00', end: '09:00' });
     const before = st().entries;
     st().updateTask(id, { title: 'Otro nombre' });
     expect(st().entries).toBe(before);
