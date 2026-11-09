@@ -25,6 +25,7 @@ import type { Unlock } from '../lib/achievements';
 import { balanceOf, bonusFor, classRef, computeStreak, multiplierFor, starsForFocus } from '../lib/rewards';
 import { hhmmToMin, toISODate, today, tsAt } from '../lib/time';
 import { lastWorkedAt } from '../lib/doneBlocks';
+import { isRanged } from '../lib/scheduler';
 import { isExpired, lostTasks } from '../lib/trash';
 import { initialData } from './defaults';
 
@@ -65,7 +66,6 @@ function pickData(s: AppData): AppData {
     rewards: s.rewards,
     stars: s.stars,
     achievements: s.achievements,
-    surveyWeeks: s.surveyWeeks,
     settings: s.settings,
   };
 }
@@ -131,7 +131,6 @@ interface Actions {
   /** Registra logros recién ganados y da sus estrellas (una sola vez por nivel). */
   unlockAchievements: (unlocks: Unlock[]) => void;
   /** Anota que copiaste la carga académica esta semana. */
-  logSurveyCopy: (weekStart: ISODate) => void;
 
   updateSettings: (patch: Partial<Settings>) => void;
   importData: (data: AppData) => void;
@@ -159,9 +158,9 @@ function cleanTravel(travel: AppData['travel'] | undefined): AppData['travel'] |
       date,
       Object.fromEntries(
         Object.entries(legs ?? {}).flatMap(([leg, o]) => {
-          const { startedAt, durationMin, ...rest } = (o ?? {}) as TravelOverride & { startedAt?: number; durationMin?: number };
-          void durationMin;
-          const kept = startedAt ? { ...rest, start: undefined } : rest;
+          const { startedAt, durationMin, ...rest } = (o ?? {}) as TravelOverride & { startedAt?: number };
+          // La duración de un traslado marcado con "Salgo ahora" era lo que se demoró: se descarta.
+          const kept = startedAt ? { ...rest, start: undefined } : { ...rest, durationMin };
           const clean = Object.fromEntries(Object.entries(kept).filter(([, v]) => v !== undefined));
           return Object.keys(clean).length ? [[leg, clean]] : [];
         }),
@@ -378,7 +377,13 @@ export const useStore = create<Store>()(
           if (!done && task.done) get().setTaskDone(taskId, false);
         },
 
-        moveTask: (id, date) => get().updateTask(id, { date }),
+        moveTask: (id, date) => {
+          const task = get().tasks.find((t) => t.id === id);
+          if (!task) return;
+          // En una tarea con rango Desde–Hasta, se elige el día dentro del rango (si cabe).
+          if (isRanged(task) && date <= task.deadline!) get().updateTask(id, { day: date });
+          else get().updateTask(id, { date, day: undefined });
+        },
 
         setSubtaskDate: (taskId, subtaskId, date) =>
           set((s) => ({
@@ -529,8 +534,6 @@ export const useStore = create<Store>()(
           });
           for (const u of fresh) award(u.stars, `Logro: ${u.title}`, 'logro', `${u.id}:${u.level}`);
         },
-        logSurveyCopy: (weekStart) =>
-          set((s) => (s.surveyWeeks.includes(weekStart) ? {} : { surveyWeeks: [...s.surveyWeeks, weekStart] })),
 
         updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
         importData: (data) => set(withDefaults(data)),

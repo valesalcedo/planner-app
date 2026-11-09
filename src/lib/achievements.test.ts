@@ -21,8 +21,8 @@ function task(p: Partial<Task> & { id: string; date: string }): Task {
 }
 
 describe('logros', () => {
-  it('hay 22 logros con ids únicos y niveles de menor a mayor', () => {
-    expect(ACHIEVEMENTS).toHaveLength(22);
+  it('hay 21 logros con ids únicos y niveles de menor a mayor', () => {
+    expect(ACHIEVEMENTS).toHaveLength(21);
     expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(22);
     for (const a of ACHIEVEMENTS) {
       a.tiers.forEach((t, i) => i > 0 && expect(t.goal).toBeGreaterThan(a.tiers[i - 1].goal));
@@ -88,11 +88,5 @@ describe('logros', () => {
     data.entries = [{ id: 'e', taskId: 't', activityId: 'estudio', start: tsAt('2026-10-01', 0), end: tsAt('2026-10-01', 0) + 51 * 3600000 }];
     const unlocks = pendingUnlocks(statusOf(data, {}, NOW), {}).filter((u) => u.id === 'horas');
     expect(unlocks.map((u) => u.level)).toEqual([1, 2]);
-  });
-
-  it('cuenta semanas seguidas copiando la carga académica', () => {
-    const data = initialData();
-    data.surveyWeeks = ['2026-09-21', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26'];
-    expect(measure(data, NOW).encuestada).toBe(4);
   });
 });

@@ -1,7 +1,7 @@
 import { Icon } from '../../components/Icon';
 import { useLookups } from '../../hooks/useDerived';
 import { loggedMinutes } from '../../lib/scheduler';
-import { type SubtaskDays, isSplit, isSpread, minutesOn, subtaskDay } from '../../lib/spread';
+import { type SubtaskDays, isRanged, isSplit, isSpread, minutesOn, subtaskDay } from '../../lib/spread';
 import { WEEKDAYS, addDays, formatDuration, formatShortDate, weekdayOf } from '../../lib/time';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
@@ -63,8 +63,8 @@ export function TaskList({ tasks, date, days, todayDate }: Props) {
                 {t.personal
                   ? ` · ${category(t.categoryId)?.name ?? 'Personal'}`
                   : course(t.courseId) && ` · ${course(t.courseId)!.name}`}
-                {isSpread(t)
-                  ? ` · entrega ${dayLabel(t.deadline!, todayDate)}`
+                {isSpread(t) || isRanged(t)
+                  ? ` · hasta ${dayLabel(t.deadline!, todayDate)}`
                   : t.date < date && !t.done && ` · atrasada desde el ${formatShortDate(t.date)}`}
               </span>
             </button>

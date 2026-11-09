@@ -12,12 +12,15 @@
  *  - Las subtareas con un día elegido a mano se quedan en ese día.
  *  - Se recalcula cada vez desde hoy: lo que no alcanzaste a hacer se vuelve a repartir
  *    entre los días que quedan.
+ *
+ * Una tarea sin subtareas con rango Desde–Hasta va entera al día del rango con más tiempo
+ * libre (descontando lo que ya tiene ese día). Si hay empate, al más temprano.
  */
 import type { Attendance, CalendarEvent, ISODate, Settings, Task, TimeEntry, TravelLeg, TravelOverride, WeeklyBlock } from '../types';
-import { type SubtaskDays, busyBlocksFor, freeSlots, loggedMinutes, subtaskDay, travelBlocksFor } from './scheduler';
+import { type SubtaskDays, busyBlocksFor, freeSlots, isRanged, loggedMinutes, subtaskDay, taskDay, travelBlocksFor } from './scheduler';
 import { addDays, hhmmToMin } from './time';
 
-export { type SubtaskDays, subtaskDay };
+export { type SubtaskDays, isRanged, subtaskDay, taskDay };
 
 export interface SpreadContext {
   today: ISODate;
@@ -44,7 +47,7 @@ export function isSpread(t: Task): boolean {
 export function taskDays(task: Task, days: SubtaskDays, today: ISODate): ISODate[] {
   if (task.done) return [task.date];
   const pending = task.subtasks.filter((s) => !s.done);
-  if (pending.length === 0) return [maxDate(task.date, today)];
+  if (pending.length === 0) return [taskDay(task, days, today)];
   return [...new Set(pending.map((s) => subtaskDay(task, s, days, today)))].sort();
 }
 
@@ -94,7 +97,8 @@ export function spreadSubtasks(tasks: Task[], ctx: SpreadContext): SubtaskDays {
     if (t.done) continue;
     const pending = t.subtasks.filter((s) => !s.done);
     if (pending.length === 0) {
-      addLoad(maxDate(t.date, ctx.today), remainingMin(t.estimateMin, byTask.get(t.id) ?? 0));
+      if (isRanged(t) && !t.day) continue;
+      addLoad(maxDate(t.day ?? t.date, ctx.today), remainingMin(t.estimateMin, byTask.get(t.id) ?? 0));
       continue;
     }
     const auto = spread.includes(t);
@@ -104,9 +108,19 @@ export function spreadSubtasks(tasks: Task[], ctx: SpreadContext): SubtaskDays {
     }
   }
 
-  // 2. Las tareas repartidas, primero las que se entregan antes.
-  spread.sort((a, b) => a.deadline!.localeCompare(b.deadline!) || a.createdAt - b.createdAt);
-  for (const t of spread) {
+  // 2. Las tareas repartidas y las de rango Desde–Hasta, primero las que se entregan antes.
+  const auto = [...spread, ...tasks.filter((t) => isRanged(t) && !t.day)];
+  auto.sort((a, b) => a.deadline!.localeCompare(b.deadline!) || a.createdAt - b.createdAt);
+  for (const t of auto) {
+    if (isRanged(t)) {
+      const first = maxDate(t.date, ctx.today);
+      const last = maxDate(t.deadline!, first);
+      let best = first;
+      for (let d = first; d <= last; d = addDays(d, 1)) if (capacity(d) > capacity(best)) best = d;
+      days.set(t.id, best);
+      addLoad(best, remainingMin(t.estimateMin, byTask.get(t.id) ?? 0));
+      continue;
+    }
     const rest = t.subtasks
       .filter((s) => !s.done && !s.date)
       .map((s) => ({ id: s.id, min: remainingMin(s.estimateMin, bySub.get(s.id) ?? 0) }));

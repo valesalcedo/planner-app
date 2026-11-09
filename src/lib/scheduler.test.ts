@@ -126,6 +126,17 @@ describe('traslados', () => {
     expect(travelBlocksFor(DAY, classes, { [DAY]: ['c1', 'c2'] }, undefined, travelSettings)).toEqual([]);
   });
 
+  it('un día sin clases muestra solo los traslados agregados a mano, con su duración', () => {
+    const sat = '2026-10-17';
+    const t = travelBlocksFor(sat, classes, {}, { ida: { added: true, start: '10:00', durationMin: 45 } }, travelSettings);
+    expect(t.map((x) => [x.leg, x.start, x.end, x.added])).toEqual([['ida', 600, 645, true]]);
+  });
+
+  it('cambiar la duración de la ida la hace salir antes para llegar a la primera clase', () => {
+    const t = travelBlocksFor(DAY, classes, {}, { ida: { durationMin: 90 } }, travelSettings);
+    expect(t.find((x) => x.leg === 'ida')).toMatchObject({ start: 410, end: 500, customDuration: true });
+  });
+
   it('la vuelta espera lo que va pegado a la última clase (almuerzo, misa)', () => {
     const week: WeeklyBlock[] = [
       ...classes,

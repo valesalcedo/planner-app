@@ -37,9 +37,15 @@ export interface Subtask {
 export interface Task {
   id: string;
   title: string;
-  /** Día en que planeas hacerla. Si no la terminas, sigue apareciendo los días siguientes. */
+  /**
+   * "Desde": primer día en que se puede hacer. Si no la terminas, sigue apareciendo los días siguientes.
+   * Con fecha "Hasta" (`deadline`), la app la pone sola en el día más conveniente del rango.
+   */
   date: ISODate;
+  /** "Hasta": fecha de término o entrega. */
   deadline?: ISODate;
+  /** Día elegido a mano dentro del rango (sin esto, lo elige la app según tu carga). */
+  day?: ISODate;
   /** Tiene que hacerse sí o sí el día planificado: se agenda temprano y no se posterga. */
   mustToday: boolean;
   difficulty: Difficulty;
@@ -134,6 +140,10 @@ export interface TravelOverride {
   start?: HHMM;
   /** Ese día no hay traslado. */
   removed?: boolean;
+  /** Minutos que dura ese día (sin esto, los de Ajustes). */
+  durationMin?: number;
+  /** Lo agregaste a mano un día sin clases (por ejemplo, un fin de semana). */
+  added?: boolean;
 }
 
 /** Dónde dejaste fija una tarea al arrastrarla: a una hora o dentro de un traslado. */
@@ -232,7 +242,5 @@ export interface AppData {
   stars: StarTx[];
   /** Logros ganados: id del logro → cuántos niveles ya diste (las estrellas se dan una sola vez por nivel). */
   achievements: Record<string, number>;
-  /** Lunes de cada semana en que copiaste la carga académica (para el logro "Encuestada"). */
-  surveyWeeks: ISODate[];
   settings: Settings;
 }

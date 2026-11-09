@@ -121,3 +121,34 @@ describe('buildUnits con reparto', () => {
     expect(buildUnits([t], [], MON, { today: MON }).map((u) => u.subtaskId)).toEqual(['a']);
   });
 });
+
+describe('tareas con rango Desde–Hasta', () => {
+  const busyMonTue: WeeklyBlock[] = [
+    { id: 'c1', title: 'Clase', kind: 'clase', weekday: 0, start: '08:00', end: '18:00' },
+    { id: 'c2', title: 'Clase', kind: 'clase', weekday: 1, start: '08:00', end: '16:00' },
+  ];
+
+  it('va al día con más tiempo libre del rango', () => {
+    const t = task({ id: 'x', estimateMin: 60, deadline: FRI });
+    const days = spreadSubtasks([t], ctx({ weekly: busyMonTue }));
+    expect(days.get('x')).toBe(WED);
+    expect(taskDays(t, days, MON)).toEqual([WED]);
+    expect(buildUnits([t], [], WED, { days, today: MON }).map((u) => u.taskId)).toEqual(['x']);
+    expect(buildUnits([t], [], MON, { days, today: MON })).toEqual([]);
+  });
+
+  it('si hay empate va al más temprano, y la carga de otras tareas cuenta', () => {
+    const fixed = task({ id: 'f', date: MON, estimateMin: 240 });
+    const t = task({ id: 'x', estimateMin: 60, deadline: TUE });
+    expect(spreadSubtasks([t], ctx()).get('x')).toBe(MON);
+    expect(spreadSubtasks([fixed, t], ctx()).get('x')).toBe(TUE);
+  });
+
+  it('respeta el día elegido a mano y el "sí o sí"', () => {
+    const manual = task({ id: 'm', estimateMin: 60, deadline: FRI, day: THU });
+    const must = task({ id: 's', estimateMin: 60, deadline: FRI, mustToday: true });
+    const days = spreadSubtasks([manual, must], ctx({ weekly: busyMonTue }));
+    expect(taskDays(manual, days, MON)).toEqual([THU]);
+    expect(taskDays(must, days, MON)).toEqual([MON]);
+  });
+});

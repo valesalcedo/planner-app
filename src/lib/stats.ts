@@ -198,19 +198,3 @@ export function weekStats(data: StatsInput, weekStart: ISODate, now = Date.now()
     attendance,
   };
 }
-
-/** Texto plano de la carga académica, listo para copiar. */
-export function loadAsText(
-  load: WeekStats['load'],
-  courseName: (id: string) => string,
-  activityName: (id: string) => string,
-  label: string,
-): string {
-  const lines = [`Carga académica · ${label}`];
-  for (const [course, row] of load) {
-    const total = [...row.values()].reduce((a, b) => a + b, 0);
-    lines.push('', `${courseName(course)}: ${(total / 60).toFixed(1)} h`);
-    for (const [act, min] of row) lines.push(`  · ${activityName(act)}: ${(min / 60).toFixed(1)} h`);
-  }
-  return lines.join('\n');
-}

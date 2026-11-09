@@ -1,5 +1,5 @@
 import type { Difficulty, ISODate, Settings, StarTx, Task } from '../types';
-import { addDays } from './time';
+import { addDays, toISODate } from './time';
 
 /**
  * Un día cuenta para la racha si tenía tareas planificadas y todas quedaron hechas.
@@ -9,9 +9,10 @@ import { addDays } from './time';
 export function computeStreak(tasks: Task[], todayDate: ISODate, maxLookback = 120): number {
   const byDay = new Map<ISODate, Task[]>();
   for (const t of tasks) {
-    const list = byDay.get(t.date) ?? [];
+    const day = streakDay(t);
+    const list = byDay.get(day) ?? [];
     list.push(t);
-    byDay.set(t.date, list);
+    byDay.set(day, list);
   }
   const status = (d: ISODate): 'done' | 'missed' | 'empty' => {
     const list = byDay.get(d);
@@ -28,6 +29,18 @@ export function computeStreak(tasks: Task[], todayDate: ISODate, maxLookback = 1
     else if (s === 'missed') break;
   }
   return streak;
+}
+
+/**
+ * Día en que una tarea cuenta para la racha. Una con rango Desde–Hasta no corta la racha
+ * antes de su fecha Hasta: cuenta el día elegido, o el día en que la terminaste, o el Hasta.
+ */
+function streakDay(t: Task): ISODate {
+  const ranged = !t.mustToday && !!t.deadline && t.deadline > t.date && t.subtasks.length === 0;
+  if (!ranged) return t.date;
+  if (t.day) return t.day;
+  if (t.done && t.doneAt !== undefined) return toISODate(new Date(t.doneAt));
+  return t.deadline!;
 }
 
 export function multiplierFor(streak: number, settings: Pick<Settings, 'streakDays' | 'streakMultiplier'>): number {

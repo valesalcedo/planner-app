@@ -70,6 +70,10 @@ export interface TravelBlock {
   moved: boolean;
   /** Ese día lo quitaste (se muestra para poder restaurarlo, pero no ocupa tiempo). */
   removed: boolean;
+  /** Lo agregaste a mano (un día sin clases). */
+  added: boolean;
+  /** Le cambiaste la duración ese día. */
+  customDuration: boolean;
 }
 
 export interface Placement {
@@ -154,7 +158,9 @@ function notGoingSet(date: ISODate, attendance?: Record<ISODate, Record<string, 
 }
 
 /**
- * Traslados del día: solo los días con alguna clase (no marcada "no hubo").
+ * Traslados del día: automáticos los días con alguna clase (no marcada "no hubo"), y los que
+ * agregaste a mano cualquier otro día (por ejemplo, un fin de semana). Cada uno puede tener
+ * su propia duración ese día.
  * Marcar "no voy" no los cambia: siguen a la misma hora, y si decides quedarte en tu casa
  * los quitas a mano. La ida termina cuando empieza la primera clase y la vuelta parte
  * cuando termina la última (o lo que va pegado a ella, como el almuerzo), salvo que la hayas movido.
@@ -167,11 +173,26 @@ export function travelBlocksFor(
   settings: Pick<Settings, 'travelEnabled' | 'travelMin'>,
   _attendance?: Record<ISODate, Record<string, Attendance>>,
 ): TravelBlock[] {
-  if (!settings.travelEnabled || settings.travelMin <= 0) return [];
   const wd = weekdayOf(date);
   const skip = new Set(skipped[date] ?? []);
   const classes = weekly.filter((b) => b.kind === 'clase' && b.weekday === wd && !skip.has(b.id));
-  if (classes.length === 0) return [];
+  const auto = settings.travelEnabled && settings.travelMin > 0 && classes.length > 0;
+  const block = (leg: TravelLeg, start: number, o: TravelOverride): TravelBlock => ({
+    leg,
+    start,
+    end: start + (o.durationMin ?? settings.travelMin),
+    moved: !!o.start && !o.added,
+    removed: !!o.removed,
+    added: !!o.added,
+    customDuration: o.durationMin !== undefined,
+  });
+  if (!auto) {
+    // Sin clases (o sin traslados automáticos): solo los que agregaste a mano ese día.
+    return (['ida', 'vuelta'] as const).flatMap((leg) => {
+      const o = overrides?.[leg];
+      return o?.added && o.start ? [block(leg, hhmmToMin(o.start), o)] : [];
+    });
+  }
   let firstStart = Math.min(...classes.map((b) => hhmmToMin(b.start)));
   let lastEnd = Math.max(...classes.map((b) => hhmmToMin(b.end)));
   // Lo que va pegado a las clases (almuerzo, misa, ayudantía…) también es en la U:
@@ -193,20 +214,12 @@ export function travelBlocksFor(
       }
     }
   }
-  const defaults: Record<TravelLeg, number> = {
-    ida: Math.max(0, firstStart - settings.travelMin),
-    vuelta: lastEnd,
-  };
   return (['ida', 'vuelta'] as const).map((leg) => {
     const o = overrides?.[leg] ?? {};
-    const start = o.start ? hhmmToMin(o.start) : defaults[leg];
-    return {
-      leg,
-      start,
-      end: start + settings.travelMin,
-      moved: !!o.start,
-      removed: !!o.removed,
-    };
+    const dur = o.durationMin ?? settings.travelMin;
+    // La ida llega justo a la primera clase, aunque le cambies la duración.
+    const def = leg === 'ida' ? Math.max(0, firstStart - dur) : lastEnd;
+    return block(leg, o.start ? hhmmToMin(o.start) : def, o);
   });
 }
 
@@ -257,7 +270,7 @@ export function loggedMinutes(entries: TimeEntry[]): { byTask: Map<string, numbe
   return { byTask, bySub };
 }
 
-/** Día que le toca a cada subtarea repartida entre varios días (ver spread.ts): id → fecha. */
+/** Día que le toca a cada subtarea repartida (id de subtarea → fecha) y a cada tarea con rango Desde–Hasta (id de tarea → fecha). Ver spread.ts. */
 export type SubtaskDays = Map<string, ISODate>;
 
 /**
@@ -265,7 +278,21 @@ export type SubtaskDays = Map<string, ISODate>;
  * Lo atrasado toca hoy.
  */
 export function subtaskDay(task: Task, sub: Subtask, days: SubtaskDays, today: ISODate): ISODate {
-  const d = sub.date ?? days.get(sub.id) ?? task.date;
+  const d = sub.date ?? days.get(sub.id) ?? task.day ?? task.date;
+  return d > today ? d : today;
+}
+
+/**
+ * Tarea sin subtareas con rango Desde–Hasta: la app elige el día según tu carga.
+ * "Sí o sí" la deja fija en el día Desde.
+ */
+export function isRanged(t: Task): boolean {
+  return !t.done && !t.mustToday && !!t.deadline && t.deadline > t.date && t.subtasks.length === 0;
+}
+
+/** Día en que toca una tarea sin subtareas: el elegido a mano, el que eligió la app o el Desde. Lo atrasado toca hoy. */
+export function taskDay(task: Task, days: SubtaskDays, today: ISODate): ISODate {
+  const d = task.day ?? days.get(task.id) ?? task.date;
   return d > today ? d : today;
 }
 
@@ -313,7 +340,8 @@ export function buildUnits(
         });
       });
     } else {
-      if ((t.date > today ? t.date : today) !== date) continue;
+      if (taskDay(t, days, today) !== date) continue;
+      const placed = !!t.day || days.has(t.id);
       units.push({
         key: t.id,
         taskId: t.id,
@@ -321,7 +349,8 @@ export function buildUnits(
         taskTitle: t.title,
         remainingMin: remaining(t.estimateMin, byTask.get(t.id) ?? 0),
         difficulty: t.difficulty,
-        tier,
+        // El día que eligió la app (o tú) dentro del rango va antes que lo flexible.
+        tier: placed && tier === 2 ? 1 : tier,
         order: 0,
         onTheGo: !!t.onTheGo,
       });

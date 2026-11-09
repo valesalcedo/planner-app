@@ -16,7 +16,6 @@ export function useAchievementStatus(): AchievementStatus[] {
       events: s.events,
       courses: s.courses,
       stars: s.stars,
-      surveyWeeks: s.surveyWeeks,
     })),
   );
   const awarded = useStore((s) => s.achievements);

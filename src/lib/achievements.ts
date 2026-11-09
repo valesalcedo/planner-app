@@ -59,7 +59,6 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'preparada', group: 'ramos', title: 'Preparada', titleM: 'Preparado', titleN: 'Con preparación', desc: 'Termina tus tareas de estudio antes de una evaluación', tiers: [{ goal: 1, stars: 80 }] },
   { id: 'equilibrio', group: 'ramos', title: 'Equilibrio', desc: 'Avanza en todos tus ramos la misma semana', tiers: [{ goal: 1, stars: 50 }] },
 
-  { id: 'encuestada', group: 'habitos', title: 'Encuestada', titleM: 'Encuestado', titleN: 'Encuesta al día', desc: 'Copia tu carga académica 4 semanas seguidas', unit: 'semanas', tiers: [{ goal: 4, stars: 60 }] },
   { id: 'viaje', group: 'habitos', title: 'Aprovecha el viaje', desc: 'Termina 10 tareas para el transporte', unit: 'tareas', tiers: [{ goal: 10, stars: 50 }] },
   { id: 'primer-gustito', group: 'habitos', title: 'Primer gustito', desc: 'Canjea tu primer premio en la tienda', tiers: [{ goal: 1, stars: 0 }] },
   { id: 'ahorradora', group: 'habitos', title: 'Ahorradora', titleM: 'Ahorrador', titleN: 'Ahorro', desc: 'Junta 1.000 estrellas sin gastarlas', unit: 'estrellas', tiers: [{ goal: 1000, stars: 100 }] },
@@ -76,7 +75,7 @@ export const TIER_NAMES = ['Bronce', 'Plata', 'Oro', 'Diamante'];
 
 export type AchievementInput = Pick<
   AppData,
-  'tasks' | 'entries' | 'weekly' | 'skipped' | 'attendance' | 'events' | 'courses' | 'stars' | 'surveyWeeks'
+  'tasks' | 'entries' | 'weekly' | 'skipped' | 'attendance' | 'events' | 'courses' | 'stars'
 >;
 
 const endOfDay = (d: ISODate) => tsAt(addDays(d, 1), 0);
@@ -219,12 +218,6 @@ export function measure(data: AchievementInput, now = Date.now()): Record<string
   }
 
   // —— Hábitos ——
-  const surveys = [...new Set(data.surveyWeeks ?? [])].sort();
-  let surveyRun = 0;
-  for (let i = 0, run = 0; i < surveys.length; i++) {
-    run = i > 0 && surveys[i - 1] === addDays(surveys[i], -7) ? run + 1 : 1;
-    surveyRun = Math.max(surveyRun, run);
-  }
 
   return {
     presente: fui.length,
@@ -245,7 +238,6 @@ export function measure(data: AchievementInput, now = Date.now()): Record<string
     'ramo-100': fullCourseWeeks,
     preparada: prepared,
     equilibrio: balancedWeeks,
-    encuestada: surveyRun,
     viaje: done.filter((t) => t.onTheGo).length,
     'primer-gustito': data.stars.filter(isRedemption).length,
     ahorradora: balanceOf(data.stars),

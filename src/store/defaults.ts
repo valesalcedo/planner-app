@@ -59,7 +59,6 @@ export function initialData(): AppData {
     ],
     stars: [],
     achievements: {},
-    surveyWeeks: [],
     settings: DEFAULT_SETTINGS,
   };
 }
