@@ -100,6 +100,12 @@ interface Actions {
   addManualEntry: (input: ManualEntryInput) => number | null;
   /** Borra un registro de tiempo y las estrellas que dio. */
   deleteEntry: (id: string) => void;
+  /**
+   * Cambia el día, las horas o la subtarea de un registro de tiempo. Las estadísticas de la
+   * semana en que cae se recalculan solas, y sus estrellas se ajustan a la nueva duración.
+   * Devuelve false si las horas no son válidas.
+   */
+  updateEntry: (id: string, input: Omit<ManualEntryInput, 'taskId'>) => boolean;
 
   saveBlock: (b: WeeklyBlock | Draft<WeeklyBlock>) => void;
   deleteBlock: (id: string) => void;
@@ -381,7 +387,8 @@ export const useStore = create<Store>()(
           const task = get().tasks.find((t) => t.id === id);
           if (!task) return;
           // En una tarea con rango Desde–Hasta, se elige el día dentro del rango (si cabe).
-          if (isRanged(task) && date <= task.deadline!) get().updateTask(id, { day: date });
+          const inRange = !!task.deadline && task.deadline > task.date && date >= task.date && date <= task.deadline;
+          if (inRange || (isRanged(task) && date <= task.deadline!)) get().updateTask(id, { day: date });
           else get().updateTask(id, { date, day: undefined });
         },
 
@@ -435,6 +442,27 @@ export const useStore = create<Store>()(
           revoke('foco', id);
           set((s) => ({ entries: s.entries.filter((e) => e.id !== id) }));
           if (entry) syncDoneAt(entry.taskId);
+        },
+
+        updateEntry: (id, { subtaskId, date, start, end }) => {
+          const entry = get().entries.find((e) => e.id === id);
+          const from = hhmmToMin(start);
+          const to = hhmmToMin(end);
+          if (!entry || !(to > from)) return false;
+          const startTs = tsAt(date, from);
+          const endTs = tsAt(date, to);
+          if (startTs > Date.now()) return false;
+          set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, subtaskId, start: startTs, end: endTs } : e)) }));
+          // Las estrellas del registro (si se pueden separar) pasan a valer lo de la nueva duración.
+          const tx = get().stars.find((t) => t.kind === 'foco' && t.ref === id);
+          if (tx) {
+            const amount = starsForFocus(to - from, get().settings, currentMultiplier());
+            set((s) => ({
+              stars: amount > 0 ? s.stars.map((t) => (t.id === tx.id ? { ...t, amount } : t)) : s.stars.filter((t) => t.id !== tx.id),
+            }));
+          }
+          syncDoneAt(entry.taskId);
+          return true;
         },
 
         saveBlock: (b) => set((s) => ({ weekly: upsert(s.weekly, b) })),

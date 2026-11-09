@@ -46,3 +46,28 @@
 .entry:last-child {
   border-bottom: none;
 }
+
+.entryMain {
+  flex: 1;
+  align-items: flex-start;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.entryActive {
+  background: var(--primary-soft);
+  border-radius: var(--radius);
+  padding-left: 8px;
+  padding-right: 4px;
+}
+
+.editHint {
+  color: var(--muted, currentColor);
+  opacity: 0.6;
+  flex-shrink: 0;
+}

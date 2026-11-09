@@ -54,7 +54,7 @@ export function TaskList({ tasks, date, days, todayDate }: Props) {
                 onChange={(e) => setTaskDone(t.id, e.target.checked)}
               />
             </span>
-            <button type="button" className={styles.workMain} onClick={() => openTaskForm({ taskId: t.id })}>
+            <button type="button" className={styles.workMain} onClick={() => openTaskForm({ taskId: t.id, date })}>
               <span className={styles.workTitle} style={t.done ? { textDecoration: 'line-through' } : undefined}>
                 {t.title}
               </span>
@@ -68,9 +68,9 @@ export function TaskList({ tasks, date, days, todayDate }: Props) {
                 <span className="small muted">
                   {formatDuration(byTask.get(t.id) ?? 0)} de {formatDuration(t.estimateMin)}
                   {isSplit(t, days, todayDate) && ` · ${formatDuration(minutesOn(t, date, days, todayDate))} este día`}
-                  {isSpread(t) || isRanged(t)
+                  {isSpread(t) || isRanged(t) || (!!t.day && !!t.deadline && t.deadline > t.date)
                     ? ` · hasta ${dayLabel(t.deadline!, todayDate)}`
-                    : t.date < date && !t.done && ` · atrasada desde el ${formatShortDate(t.date)}`}
+                    : (t.day ?? t.date) < date && !t.done && ` · atrasada desde el ${formatShortDate(t.day ?? t.date)}`}
                 </span>
               </span>
             </button>
@@ -78,7 +78,7 @@ export function TaskList({ tasks, date, days, todayDate }: Props) {
               type="button"
               className="icon-btn icon-btn--plain"
               aria-label={`Agregar tiempo a "${t.title}"`}
-              onClick={() => openTimeLog({ taskId: t.id })}
+              onClick={() => openTimeLog({ taskId: t.id, date })}
             >
               <Icon name="clock" size={18} />
             </button>

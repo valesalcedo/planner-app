@@ -273,3 +273,36 @@ describe('día en que queda una tarea terminada', () => {
     expect(doneDayOf(st().tasks[0])).toBe('2026-01-05');
   });
 });
+
+describe('editar un registro de tiempo', () => {
+  beforeEach(() => st().resetData());
+
+  it('moverlo a una semana pasada cambia el resumen de ambas semanas y ajusta sus estrellas', async () => {
+    const { weekStats } = await import('../lib/stats');
+    const { startOfWeek } = await import('../lib/time');
+    const id = addTestTask();
+    const thisWeek = startOfWeek(today());
+    const lastWeek = addDays(thisWeek, -7);
+    st().addManualEntry({ taskId: id, date: lastWeek, start: '10:00', end: '11:00' });
+    const entryId = st().entries[0].id;
+    expect(weekStats(st(), lastWeek).focusTotal).toBe(60);
+
+    expect(st().updateEntry(entryId, { date: addDays(lastWeek, 2), start: '10:00', end: '12:00' })).toBe(true);
+    expect(weekStats(st(), lastWeek).focusTotal).toBe(120);
+    expect(weekStats(st(), lastWeek).focusByDay[2]).toBe(120);
+    const foco = st().stars.filter((t) => t.kind === 'foco');
+    expect(foco).toHaveLength(1);
+    expect(foco[0].ref).toBe(entryId);
+    expect(foco[0].amount).toBeGreaterThan(0);
+
+    st().updateEntry(entryId, { date: addDays(lastWeek, -7), start: '10:00', end: '10:30' });
+    expect(weekStats(st(), lastWeek).focusTotal).toBe(0);
+    expect(weekStats(st(), addDays(lastWeek, -7)).focusTotal).toBe(30);
+  });
+
+  it('no acepta horas al revés', () => {
+    const id = addTestTask();
+    st().addManualEntry({ taskId: id, date: addDays(today(), -1), start: '10:00', end: '11:00' });
+    expect(st().updateEntry(st().entries[0].id, { date: addDays(today(), -1), start: '12:00', end: '11:00' })).toBe(false);
+  });
+});

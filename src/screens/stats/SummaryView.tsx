@@ -167,7 +167,7 @@ export function SummaryView({ week }: Props) {
                                       <button
                                         type="button"
                                         className={styles.detailTitle}
-                                        onClick={() => openTaskForm({ taskId: it.taskId })}
+                                        onClick={() => openTaskForm({ taskId: it.taskId, date: it.days[it.days.length - 1] })}
                                       >
                                         {it.label}
                                       </button>

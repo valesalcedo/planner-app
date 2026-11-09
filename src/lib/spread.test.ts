@@ -84,6 +84,13 @@ describe('spreadSubtasks', () => {
     expect(days.get('a')).toBe(TUE);
   });
 
+  it('con el día de la tarea elegido a mano, sus subtareas van ese día y no se reparten', () => {
+    const t = task({ id: 'inf', deadline: FRI, day: THU, subtasks: [sub('a'), sub('b'), sub('c', 60, { date: TUE })] });
+    const days = spreadSubtasks([t], ctx());
+    expect(days.size).toBe(0);
+    expect(taskDays(t, days, MON)).toEqual([TUE, THU]);
+  });
+
   it('respeta el día elegido a mano y reparte el resto', () => {
     const t = task({ id: 'x', deadline: WED, subtasks: [sub('a'), sub('b', 60, { date: WED }), sub('c')] });
     const days = spreadSubtasks([t], ctx());

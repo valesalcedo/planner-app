@@ -36,6 +36,8 @@ export function computeStreak(tasks: Task[], todayDate: ISODate, maxLookback = 1
  * antes de su fecha Hasta: cuenta el día elegido, o el día en que la terminaste, o el Hasta.
  */
 function streakDay(t: Task): ISODate {
+  // El día que elegiste a mano es el día en que toca.
+  if (t.day) return t.day;
   const ranged = !t.mustToday && !!t.deadline && t.deadline > t.date && t.subtasks.length === 0;
   if (!ranged) return t.date;
   if (t.day) return t.day;

@@ -13,6 +13,8 @@
  *  - Se recalcula cada vez desde hoy: lo que no alcanzaste a hacer se vuelve a repartir
  *    entre los días que quedan.
  *
+ * Si eliges a mano el día de la tarea, va (con sus subtareas) ese día y no se reparte.
+ *
  * Una tarea sin subtareas con rango Desde–Hasta va entera al día del rango con más tiempo
  * libre (descontando lo que ya tiene ese día). Si hay empate, al más temprano.
  */
@@ -40,7 +42,8 @@ const maxDate = (a: ISODate, b: ISODate) => (a > b ? a : b);
 
 /** La tarea se reparte entre varios días. */
 export function isSpread(t: Task): boolean {
-  return !t.done && !t.mustToday && !!t.deadline && t.deadline > t.date && t.subtasks.some((s) => !s.done);
+  // Si elegiste a mano el día de la tarea, sus subtareas van ese día (no se reparten).
+  return !t.done && !t.mustToday && !t.day && !!t.deadline && t.deadline > t.date && t.subtasks.some((s) => !s.done);
 }
 
 /** Días en que hay algo pendiente de la tarea (para mostrarla en esos días). */
@@ -104,7 +107,7 @@ export function spreadSubtasks(tasks: Task[], ctx: SpreadContext): SubtaskDays {
     const auto = spread.includes(t);
     for (const s of pending) {
       if (auto && !s.date) continue;
-      addLoad(maxDate(s.date ?? t.date, ctx.today), remainingMin(s.estimateMin, bySub.get(s.id) ?? 0));
+      addLoad(maxDate(s.date ?? t.day ?? t.date, ctx.today), remainingMin(s.estimateMin, bySub.get(s.id) ?? 0));
     }
   }
 

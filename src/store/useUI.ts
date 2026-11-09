@@ -17,6 +17,8 @@ interface TimeLogState {
   taskId?: string;
   /** Subtarea ya elegida (al abrirla desde la tarjeta de una subtarea). */
   subtaskId?: string;
+  /** Día en que se anota (al abrirla desde un día o una semana pasada). Sin esto, hoy. */
+  date?: ISODate;
 }
 
 export interface ToastAction {

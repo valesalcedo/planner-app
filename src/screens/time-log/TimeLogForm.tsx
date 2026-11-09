@@ -20,6 +20,7 @@ export function TimeLogForm() {
   const settings = useStore((s) => s.settings);
   const addManualEntry = useStore((s) => s.addManualEntry);
   const deleteEntry = useStore((s) => s.deleteEntry);
+  const updateEntry = useStore((s) => s.updateEntry);
   const { multiplier } = useStreak();
 
   const todayDate = today();
@@ -34,9 +35,34 @@ export function TimeLogForm() {
   const nowMin = Math.floor(minutesOfDay(Date.now()) / 5) * 5;
   const [taskId, setTaskId] = useState(state?.taskId ?? options[0]?.id ?? '');
   const [subtaskId, setSubtaskId] = useState(state?.subtaskId ?? '');
-  const [date, setDate] = useState(todayDate);
+  // Sin un día elegido, una tarea terminada antes de hoy se anota el día en que se terminó.
+  const [date, setDate] = useState(() => {
+    if (state?.date) return state.date > todayDate ? todayDate : state.date;
+    const t = tasks.find((x) => x.id === state?.taskId);
+    const doneDay = t?.done && t.doneAt ? toISODate(new Date(t.doneAt)) : null;
+    return doneDay && doneDay < todayDate ? doneDay : todayDate;
+  });
   const [end, setEnd] = useState(minToHHMM(nowMin));
   const [start, setStart] = useState(minToHHMM(Math.max(0, nowMin - 60)));
+  /** Registro que se está editando (null: se agrega uno nuevo). */
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editing = editingId ? entries.find((e) => e.id === editingId) : undefined;
+
+  const startEditing = (id: string) => {
+    const e = entries.find((x) => x.id === id);
+    if (!e) return;
+    setEditingId(id);
+    setDate(toISODate(new Date(e.start)));
+    setStart(minToHHMM(minutesOfDay(e.start)));
+    setEnd(minToHHMM(minutesOfDay(e.end)));
+    setSubtaskId(e.subtaskId ?? '');
+  };
+  const stopEditing = () => {
+    setEditingId(null);
+    setDate(todayDate);
+    setEnd(minToHHMM(nowMin));
+    setStart(minToHHMM(Math.max(0, nowMin - 60)));
+  };
 
   const task = tasks.find((t) => t.id === taskId);
   const from = hhmmToMin(start);
@@ -53,18 +79,24 @@ export function TimeLogForm() {
 
   const startTs = tsAt(date, from);
   const endTs = tsAt(date, to);
-  const overlaps = !error && entries.some((e) => e.start < endTs && e.end > startTs);
+  const overlaps = !error && entries.some((e) => e.id !== editingId && e.start < endTs && e.end > startTs);
 
   const taskEntries = entries
     .filter((e) => e.taskId === taskId)
     .sort((a, b) => b.start - a.start)
-    .slice(0, 8);
+    .slice(0, 12);
 
   const setDuration = (min: number) => setStart(minToHHMM(Math.max(0, to - min)));
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (error || !task) return;
+    if (editing) {
+      if (!updateEntry(editing.id, { subtaskId: subtaskId || undefined, date, start, end })) return;
+      showToast(`Registro actualizado · ${formatDuration(minutes)}`);
+      stopEditing();
+      return;
+    }
     const earned = addManualEntry({ taskId, subtaskId: subtaskId || undefined, date, start, end });
     if (earned === null) return;
     showToast(earned > 0 ? `${formatDuration(minutes)} agregados · +${earned} estrellas` : 'Tiempo agregado');
@@ -73,17 +105,26 @@ export function TimeLogForm() {
 
   return (
     <Sheet
-      title="Agregar tiempo"
+      title={editing ? 'Editar tiempo' : 'Agregar tiempo'}
       onClose={close}
       footer={
-        <button type="submit" form="time-log" className="btn btn--primary btn--block" disabled={!!error}>
-          Guardar {minutes > 0 && !error ? formatDuration(minutes) : ''}
-        </button>
+        <>
+          {editing && (
+            <button type="button" className="btn" onClick={stopEditing}>
+              Cancelar
+            </button>
+          )}
+          <button type="submit" form="time-log" className="btn btn--primary btn--block" disabled={!!error}>
+            {editing ? 'Guardar cambios' : `Guardar ${minutes > 0 && !error ? formatDuration(minutes) : ''}`}
+          </button>
+        </>
       }
     >
       <form id="time-log" className="stack" style={{ gap: 16 }} onSubmit={submit}>
         <p className="small muted" style={{ margin: 0 }}>
-          ¿Se te olvidó el cronómetro? Anota lo que trabajaste y cuenta igual para tus estadísticas y estrellas.
+          {editing
+            ? 'Cambia el día o las horas de este registro. El resumen de su semana se actualiza solo.'
+            : '¿Se te olvidó el cronómetro? Anota lo que trabajaste y cuenta igual para tus estadísticas y estrellas. Toca un registro de abajo para corregirlo.'}
         </p>
 
         {options.length === 0 ? (
@@ -95,6 +136,7 @@ export function TimeLogForm() {
               id="tl-task"
               className="input"
               value={taskId}
+              disabled={!!editing}
               onChange={(e) => {
                 setTaskId(e.target.value);
                 setSubtaskId('');
@@ -172,8 +214,14 @@ export function TimeLogForm() {
                 const day = toISODate(new Date(e.start));
                 const sub = task?.subtasks.find((s) => s.id === e.subtaskId);
                 return (
-                  <li key={e.id} className={styles.entry}>
-                    <span className="stack" style={{ gap: 0, minWidth: 0 }}>
+                  <li key={e.id} className={`${styles.entry} ${e.id === editingId ? styles.entryActive : ''}`}>
+                    <button
+                      type="button"
+                      className={`stack ${styles.entryMain}`}
+                      style={{ gap: 0, minWidth: 0 }}
+                      aria-label={`Editar el registro del ${day === todayDate ? 'hoy' : formatShortDate(day)}`}
+                      onClick={() => (e.id === editingId ? stopEditing() : startEditing(e.id))}
+                    >
                       <span className="small" style={{ fontWeight: 700 }}>
                         {day === todayDate ? 'Hoy' : formatShortDate(day)} · {minToHHMM(minutesOfDay(e.start))}–{minToHHMM(minutesOfDay(e.end))}
                       </span>
@@ -182,13 +230,16 @@ export function TimeLogForm() {
                         {sub && ` · ${sub.title}`}
                         {e.manual ? ' · a mano' : ' · cronómetro'}
                       </span>
-                    </span>
+                    </button>
+                    <Icon name="edit" size={16} className={styles.editHint} aria-hidden="true" />
                     <button
                       type="button"
                       className="icon-btn icon-btn--plain"
                       aria-label="Borrar este registro"
                       onClick={() => {
-                        if (confirm('¿Borrar este registro de tiempo? Se quitan también sus estrellas.')) deleteEntry(e.id);
+                        if (!confirm('¿Borrar este registro de tiempo? Se quitan también sus estrellas.')) return;
+                        if (e.id === editingId) stopEditing();
+                        deleteEntry(e.id);
                       }}
                     >
                       <Icon name="trash" size={18} />

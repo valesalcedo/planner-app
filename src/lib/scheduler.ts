@@ -297,7 +297,7 @@ export function taskDay(task: Task, days: SubtaskDays, today: ISODate): ISODate 
 }
 
 export function tierOf(task: Task, date: ISODate): 0 | 1 | 2 {
-  if (task.mustToday && task.date <= date) return 0;
+  if (task.mustToday && (task.day ?? task.date) <= date) return 0;
   if (task.deadline && task.deadline <= date) return 0;
   if (task.deadline && task.deadline === addDays(date, 1)) return 1;
   return 2;

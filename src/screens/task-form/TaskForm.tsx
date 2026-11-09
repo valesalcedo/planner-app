@@ -15,6 +15,12 @@ import styles from './TaskForm.module.css';
 
 const PRESETS = [10, 15, 30, 45, 60, 90, 120, 180, 240];
 const NEW_CATEGORY = '__nueva__';
+/** "hoy", "mañana" o "el mié 28 oct", para usar después de un verbo. */
+const onDay = (d: ISODate, todayDate: ISODate) => {
+  const label = dayLabel(d, todayDate);
+  return label === 'hoy' || label === 'mañana' ? label : `el ${label}`;
+};
+
 const DIFFICULTIES: { id: Difficulty; label: string }[] = [
   { id: 'facil', label: 'Fácil' },
   { id: 'media', label: 'Media' },
@@ -41,6 +47,8 @@ export function TaskForm() {
   const [date, setDate] = useState(existing?.date ?? formState?.date ?? today());
   const [deadline, setDeadline] = useState(existing?.deadline ?? '');
   const [day, setDay] = useState(existing?.day ?? '');
+  /** Con rango Desde–Hasta: la app elige el día (o reparte las subtareas) o lo eliges tú. */
+  const [dayMode, setDayMode] = useState<'auto' | 'manual'>(existing?.day ? 'manual' : 'auto');
   const [personal, setPersonal] = useState(existing?.personal ?? false);
   const [courseId, setCourseId] = useState(existing?.courseId ?? '');
   const [categoryId, setCategoryId] = useState(existing?.categoryId ?? '');
@@ -54,6 +62,10 @@ export function TaskForm() {
   const now = useNow(60_000);
   const todayDate = today(new Date(now));
 
+  // Hay rango para elegir el día: fecha Hasta posterior a Desde.
+  const hasRange = !!deadline && deadline > date;
+  const dayInRange = hasRange && dayMode === 'manual' && !!day && day >= date && day <= deadline ? day : '';
+
   // La tarea tal como quedaría, para mostrar en qué día cae cada subtarea mientras la editas.
   const draft = useMemo<Task>(
     () => ({
@@ -61,18 +73,18 @@ export function TaskForm() {
       title,
       date,
       deadline: deadline || undefined,
-      // El día automático se calcula sin el elegido a mano, para poder mostrarlo como opción.
-      day: undefined,
+      // En modo automático no lleva día, así se ve cuál elegiría la app.
+      day: dayInRange || undefined,
       mustToday,
       subtasks: subtasks.filter((s) => s.title.trim() || s.estimateMin > 0).map((s) => ({ ...s, estimateMin: Math.max(1, s.estimateMin || 0) })),
     }),
-    [existing, title, date, deadline, mustToday, subtasks],
+    [existing, title, date, deadline, dayInRange, mustToday, subtasks],
   );
   const draftDays = useSubtaskDays(now, draft);
   const spreads = isSpread(draft);
   const ranged = isRanged(draft);
-  const autoDay = ranged ? taskDay(draft, draftDays, todayDate) : undefined;
-  const dayInRange = ranged && !!day && day >= date && day <= deadline ? day : '';
+  // Día que elegiría la app: el de más tiempo libre del rango, o el Desde si es "sí o sí".
+  const autoDay = hasRange && !dayInRange ? taskDay(draft, draftDays, todayDate) : undefined;
   const firstDay = date > todayDate ? date : todayDate;
   // Días que se pueden elegir para una subtarea: del inicio a la entrega (o dos semanas).
   const dayOptions = useMemo(() => {
@@ -110,7 +122,7 @@ export function TaskForm() {
     if (!data.title) return;
     if (existing) updateTask(existing.id, data);
     else addTask(data);
-    const when = ranged && autoDay ? dayLabel(dayInRange || autoDay, todayDate) : null;
+    const when = dayInRange ? dayLabel(dayInRange, todayDate) : ranged && autoDay ? dayLabel(autoDay, todayDate) : null;
     showToast(existing ? 'Tarea actualizada' : when ? `Tarea agregada para ${when}` : 'Tarea agregada a tu día');
     close();
   };
@@ -158,24 +170,53 @@ export function TaskForm() {
           </div>
         </div>
 
-        {ranged && autoDay && (
+        {hasRange && (
           <div className="field">
-            <label htmlFor="tf-day">Día en que la hago</label>
-            <select id="tf-day" className="input" value={dayInRange} onChange={(e) => setDay(e.target.value)}>
-              <option value="">Automático · {dayLabel(autoDay, todayDate)}</option>
-              {dayOptions
-                .filter((d) => d >= date && d <= deadline)
-                .map((d) => (
-                  <option key={d} value={d}>
-                    {dayLabel(d, todayDate)}
-                  </option>
-                ))}
-            </select>
-            <span className={styles.autoNote}>
-              {dayInRange
-                ? `La elegiste para ${dayLabel(dayInRange, todayDate)}.`
-                : `La puse para ${dayLabel(autoDay, todayDate)}: es el día con más tiempo libre entre ${dayLabel(date > todayDate ? date : todayDate, todayDate)} y ${dayLabel(deadline, todayDate)}. Si cambia tu carga, se reacomoda sola.`}
-            </span>
+            <span className="field-label">Día en que la hago</span>
+            <div className="segmented" role="group" aria-label="Día en que la hago">
+              <button type="button" aria-pressed={dayMode === 'auto'} onClick={() => setDayMode('auto')}>
+                Que la app elija
+              </button>
+              <button
+                type="button"
+                aria-pressed={dayMode === 'manual'}
+                onClick={() => {
+                  if (!dayInRange) setDay(autoDay && autoDay >= date && autoDay <= deadline ? autoDay : firstDay <= deadline ? firstDay : date);
+                  setDayMode('manual');
+                }}
+              >
+                Elijo yo
+              </button>
+            </div>
+            {dayMode === 'manual' ? (
+              <>
+                <input
+                  id="tf-day"
+                  type="date"
+                  className="input"
+                  aria-label="Día en que la hago"
+                  value={day}
+                  min={date}
+                  max={deadline}
+                  onChange={(e) => setDay(e.target.value)}
+                />
+                <span className={styles.autoNote}>
+                  {dayInRange
+                    ? `La haces ${onDay(dayInRange, todayDate)} y se entrega ${onDay(deadline, todayDate)}.${subtasks.length > 0 ? ' Las subtareas van ese día, salvo las que muevas a otro.' : ''}`
+                    : `Elige un día entre ${dayLabel(date, todayDate)} y ${dayLabel(deadline, todayDate)}.`}
+                </span>
+              </>
+            ) : (
+              <span className={styles.autoNote}>
+                {mustToday
+                  ? `Va ${onDay(date > todayDate ? date : todayDate, todayDate)} porque es "sí o sí" el día Desde.`
+                  : spreads
+                    ? `Las subtareas se reparten solas entre ${dayLabel(firstDay, todayDate)} y ${dayLabel(deadline, todayDate)} según tu tiempo libre.`
+                    : autoDay
+                      ? `La puse para ${dayLabel(autoDay, todayDate)}: es el día con más tiempo libre entre ${dayLabel(firstDay, todayDate)} y ${dayLabel(deadline, todayDate)}. Si cambia tu carga, se reacomoda sola.`
+                      : `La app la ubica entre ${dayLabel(firstDay, todayDate)} y ${dayLabel(deadline, todayDate)} según tu carga.`}
+              </span>
+            )}
           </div>
         )}
 
@@ -289,7 +330,7 @@ export function TaskForm() {
 
         <label className="card switch-row">
           <span className="stack" style={{ gap: 0 }}>
-            <span style={{ fontWeight: 800, fontSize: 14 }}>{deadline ? 'Sí o sí el día “Desde”' : 'Sí o sí ese día'}</span>
+            <span style={{ fontWeight: 800, fontSize: 14 }}>{hasRange && !dayInRange ? 'Sí o sí el día “Desde”' : 'Sí o sí ese día'}</span>
             <span className="small muted">Se agenda temprano y no se posterga</span>
           </span>
           <input type="checkbox" role="switch" className="switch" checked={mustToday} onChange={(e) => setMustToday(e.target.checked)} />
@@ -306,7 +347,9 @@ export function TaskForm() {
         <fieldset className={styles.subs}>
           <legend className="field-label">Subtareas</legend>
           <p className="small muted" style={{ margin: 0 }}>
-            {spreads
+            {dayInRange
+              ? `Van ${onDay(dayInRange, todayDate)} con la tarea. También puedes elegir otro día para cada una.`
+              : spreads
               ? `Se reparten solas entre ${dayLabel(firstDay, todayDate)} y ${dayLabel(deadline > firstDay ? deadline : firstDay, todayDate)} según tu tiempo libre. Si una no cabe en un día, pasa al siguiente. También puedes elegir el día de cada una.`
               : 'Se pueden avanzar en momentos distintos. Con fecha Hasta, se reparten solas entre los días que tienes.'}
           </p>
@@ -371,7 +414,7 @@ export function TaskForm() {
           <button
             type="button"
             className="btn"
-            onClick={() => openTimeLog({ taskId: existing.id })}
+            onClick={() => openTimeLog({ taskId: existing.id, date: formState?.date })}
           >
             <Icon name="clock" size={18} /> Agregar o ver tiempo trabajado
           </button>

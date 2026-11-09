@@ -276,6 +276,7 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
                         <DoneCard
                           key={`done-${b.key}-${b.start}`}
                           block={b}
+                          date={date}
                           {...group(taskById.get(b.taskId))}
                           onUndo={() => undo(b)}
                         />
@@ -295,6 +296,7 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
               ) : row.type === 'done' ? (
                 <DoneCard
                   block={row.block}
+                  date={date}
                   {...group(taskById.get(row.block.taskId))}
                   onUndo={() => undo(row.block)}
                 />
@@ -589,7 +591,7 @@ function WorkCard({ placement, task, date, courseName, courseColor, short, runni
             onChange={onComplete}
           />
         </span>
-        <button type="button" className={styles.workMain} onClick={() => openTaskForm({ taskId: task.id })}>
+        <button type="button" className={styles.workMain} onClick={() => openTaskForm({ taskId: task.id, date })}>
           <span className={styles.workTitle}>{unit.title}</span>
           <span className={styles.workMeta}>
             {courseName && <GroupTag name={courseName} color={courseColor} />}
@@ -611,7 +613,7 @@ function WorkCard({ placement, task, date, courseName, courseColor, short, runni
             type="button"
             className="icon-btn icon-btn--plain"
             aria-label={`Agregar tiempo a "${task.title}"`}
-            onClick={() => openTimeLog({ taskId: task.id, subtaskId: unit.subtaskId })}
+            onClick={() => openTimeLog({ taskId: task.id, subtaskId: unit.subtaskId, date })}
           >
             <Icon name="clock" size={18} />
           </button>
@@ -627,13 +629,14 @@ function WorkCard({ placement, task, date, courseName, courseColor, short, runni
 
 interface DoneCardProps {
   block: DoneBlock;
+  date: ISODate;
   courseName?: string;
   courseColor?: string;
   onUndo: () => void;
 }
 
 /** Tiempo ya trabajado: se queda en su hora. Si está terminada, sale tachada y apagada. */
-function DoneCard({ block, courseName, courseColor, onUndo }: DoneCardProps) {
+function DoneCard({ block, date, courseName, courseColor, onUndo }: DoneCardProps) {
   const openTaskForm = useUI((s) => s.openTaskForm);
   return (
     <div className={`${styles.work} ${block.done ? styles.done : styles.worked}`}>
@@ -647,7 +650,7 @@ function DoneCard({ block, courseName, courseColor, onUndo }: DoneCardProps) {
             onChange={onUndo}
           />
         </span>
-        <button type="button" className={styles.workMain} onClick={() => openTaskForm({ taskId: block.taskId })}>
+        <button type="button" className={styles.workMain} onClick={() => openTaskForm({ taskId: block.taskId, date })}>
           <span className={styles.workTitle}>{block.title}</span>
           <span className={styles.workMeta}>
             {courseName && <GroupTag name={courseName} color={courseColor} />}
