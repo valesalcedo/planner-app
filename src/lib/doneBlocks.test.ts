@@ -25,10 +25,13 @@ function entry(taskId: string, from: number, to: number, subtaskId?: string, dat
 }
 
 describe('doneBlocksFor', () => {
-  it('deja las tareas hechas en las horas en que se trabajaron', () => {
+  it('deja el tiempo registrado en sus horas, hecho o pendiente', () => {
     const tasks = [task({ id: 'a', title: 'Informe', done: true }), task({ id: 'b', title: 'Pendiente' })];
     const entries = [entry('a', 600, 660), entry('b', 700, 730)];
-    expect(doneBlocksFor(DAY, tasks, entries).map((b) => [b.taskId, b.start, b.end])).toEqual([['a', 600, 660]]);
+    expect(doneBlocksFor(DAY, tasks, entries).map((b) => [b.taskId, b.start, b.end, b.done])).toEqual([
+      ['a', 600, 660, true],
+      ['b', 700, 730, false],
+    ]);
   });
 
   it('junta registros seguidos de la misma tarea, pero no si hay otra en medio', () => {
@@ -41,7 +44,7 @@ describe('doneBlocksFor', () => {
     ]);
   });
 
-  it('muestra subtareas hechas aunque la tarea siga pendiente', () => {
+  it('muestra el tiempo de cada subtarea, hecha o pendiente', () => {
     const tasks = [
       task({
         id: 'a',
@@ -54,7 +57,10 @@ describe('doneBlocksFor', () => {
     ];
     const entries = [entry('a', 600, 630, 's1'), entry('a', 640, 650, 's2')];
     const blocks = doneBlocksFor(DAY, tasks, entries);
-    expect(blocks.map((b) => [b.title, b.start, b.end])).toEqual([['Parte 1', 600, 630]]);
+    expect(blocks.map((b) => [b.title, b.start, b.end, b.done])).toEqual([
+      ['Parte 1', 600, 630, true],
+      ['Parte 2', 640, 650, false],
+    ]);
   });
 
   it('ignora registros de otros días', () => {

@@ -15,6 +15,8 @@ interface TaskFormState {
 
 interface TimeLogState {
   taskId?: string;
+  /** Subtarea ya elegida (al abrirla desde la tarjeta de una subtarea). */
+  subtaskId?: string;
 }
 
 export interface ToastAction {

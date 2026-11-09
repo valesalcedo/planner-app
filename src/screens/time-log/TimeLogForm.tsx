@@ -33,7 +33,7 @@ export function TimeLogForm() {
 
   const nowMin = Math.floor(minutesOfDay(Date.now()) / 5) * 5;
   const [taskId, setTaskId] = useState(state?.taskId ?? options[0]?.id ?? '');
-  const [subtaskId, setSubtaskId] = useState('');
+  const [subtaskId, setSubtaskId] = useState(state?.subtaskId ?? '');
   const [date, setDate] = useState(todayDate);
   const [end, setEnd] = useState(minToHHMM(nowMin));
   const [start, setStart] = useState(minToHHMM(Math.max(0, nowMin - 60)));

@@ -148,6 +148,12 @@
   border: 2px dashed var(--ink-3);
 }
 
+.worked {
+  box-shadow: none;
+  background: transparent;
+  border: 2px dashed var(--primary);
+}
+
 .done .workTitle {
   text-decoration: line-through;
 }

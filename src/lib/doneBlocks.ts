@@ -1,9 +1,10 @@
 /**
- * Bloques de trabajo ya hecho para mostrar en "Mi día".
+ * Bloques de tiempo ya trabajado para mostrar en "Mi día".
  *
- * Cuando marcas una tarea (o subtarea) como hecha, no desaparece del horario:
- * se queda en las horas en que la trabajaste (según los registros de tiempo),
- * tachada. Registros seguidos de la misma tarea se juntan en un solo bloque.
+ * Todo el tiempo registrado (con cronómetro o a mano) aparece en las horas en que
+ * lo trabajaste. Si la tarea (o subtarea) ya está hecha, el bloque sale tachado;
+ * si sigue pendiente, sale como "Trabajado". Registros seguidos de la misma
+ * tarea se juntan en un solo bloque.
  */
 import type { ISODate, Task, TimeEntry } from '../types';
 import { addDays, toISODate, tsAt } from './time';
@@ -14,6 +15,8 @@ export interface DoneBlock {
   subtaskId?: string;
   title: string;
   taskTitle: string;
+  /** La tarea (o subtarea) ya está terminada. */
+  done: boolean;
   /** Minutos desde la medianoche del día mostrado. */
   start: number;
   end: number;
@@ -34,16 +37,16 @@ export function doneBlocksFor(date: ISODate, tasks: Task[], entries: TimeEntry[]
     if (!task) continue;
     const sub = e.subtaskId ? task.subtasks.find((s) => s.id === e.subtaskId) : undefined;
     const isDone = task.done || (sub?.done ?? false);
-    if (!isDone) continue;
     const start = (Math.max(e.start, dayStart) - dayStart) / 60000;
     const end = (Math.min(e.end, dayEnd) - dayStart) / 60000;
     if (end - start < 1) continue;
     pieces.push({
-      key: sub ? `${task.id}:${sub.id}` : task.id,
+      key: (sub ? `${task.id}:${sub.id}` : task.id) + (isDone ? '' : ':trabajado'),
       taskId: task.id,
       subtaskId: sub?.id,
       title: sub?.title ?? task.title,
       taskTitle: task.title,
+      done: isDone,
       start: Math.round(start),
       end: Math.round(end),
     });

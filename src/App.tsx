@@ -53,7 +53,7 @@ export function App() {
       </main>
       {page === null && <BottomNav />}
       {taskForm && <TaskForm key={taskForm.taskId ?? 'new'} />}
-      {timeLog && <TimeLogForm key={timeLog.taskId ?? 'any'} />}
+      {timeLog && <TimeLogForm key={`${timeLog.taskId ?? 'any'}:${timeLog.subtaskId ?? ''}`} />}
       {toast && (
         <div className={toastAction ? 'toast toast--action' : 'toast'} role="status">
           <span>{toast}</span>

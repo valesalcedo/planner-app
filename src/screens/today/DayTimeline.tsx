@@ -167,9 +167,10 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
     );
   };
 
+  /** Marca o desmarca la tarea (o subtarea) de un bloque de tiempo trabajado. */
   const undo = (b: DoneBlock) => {
-    if (b.subtaskId) setSubtaskDone(b.taskId, b.subtaskId, false);
-    else setTaskDone(b.taskId, false);
+    if (b.subtaskId) setSubtaskDone(b.taskId, b.subtaskId, !b.done);
+    else setTaskDone(b.taskId, !b.done);
   };
   const rowKey = (row: Row) =>
     row.type === 'busy'
@@ -610,7 +611,7 @@ function WorkCard({ placement, task, date, courseName, courseColor, short, runni
             type="button"
             className="icon-btn icon-btn--plain"
             aria-label={`Agregar tiempo a "${task.title}"`}
-            onClick={() => openTimeLog({ taskId: task.id })}
+            onClick={() => openTimeLog({ taskId: task.id, subtaskId: unit.subtaskId })}
           >
             <Icon name="clock" size={18} />
           </button>
@@ -631,21 +632,27 @@ interface DoneCardProps {
   onUndo: () => void;
 }
 
-/** Trabajo terminado: se queda en su hora, tachado y apagado. */
+/** Tiempo ya trabajado: se queda en su hora. Si está terminada, sale tachada y apagada. */
 function DoneCard({ block, courseName, courseColor, onUndo }: DoneCardProps) {
   const openTaskForm = useUI((s) => s.openTaskForm);
   return (
-    <div className={`${styles.work} ${styles.done}`}>
+    <div className={`${styles.work} ${block.done ? styles.done : styles.worked}`}>
       <div className="row" style={{ alignItems: 'flex-start' }}>
         <span className="check-hit">
-          <input type="checkbox" className="checkbox" aria-label={`Desmarcar "${block.title}"`} checked onChange={onUndo} />
+          <input
+            type="checkbox"
+            className="checkbox"
+            aria-label={block.done ? `Desmarcar "${block.title}"` : `Marcar "${block.title}" como hecha`}
+            checked={block.done}
+            onChange={onUndo}
+          />
         </span>
         <button type="button" className={styles.workMain} onClick={() => openTaskForm({ taskId: block.taskId })}>
           <span className={styles.workTitle}>{block.title}</span>
           <span className={styles.workMeta}>
             {courseName && <GroupTag name={courseName} color={courseColor} />}
             <span className="small muted">
-              Hecha · {minToHHMM(block.start)}–{minToHHMM(block.end)} · {formatDuration(block.end - block.start)}
+              {block.done ? 'Hecha' : 'Trabajado'} · {minToHHMM(block.start)}–{minToHHMM(block.end)} · {formatDuration(block.end - block.start)}
               {block.subtaskId ? ` · ${block.taskTitle}` : ''}
             </span>
           </span>
