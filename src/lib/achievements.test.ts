@@ -23,7 +23,7 @@ function task(p: Partial<Task> & { id: string; date: string }): Task {
 describe('logros', () => {
   it('hay 21 logros con ids únicos y niveles de menor a mayor', () => {
     expect(ACHIEVEMENTS).toHaveLength(21);
-    expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(22);
+    expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(21);
     for (const a of ACHIEVEMENTS) {
       a.tiers.forEach((t, i) => i > 0 && expect(t.goal).toBeGreaterThan(a.tiers[i - 1].goal));
     }
