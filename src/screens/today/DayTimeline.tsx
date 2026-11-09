@@ -149,7 +149,7 @@ export function DayTimeline({ date, plan, doneBlocks, doneTasks }: Props) {
         task={taskById.get(p.unit.taskId)}
         date={date}
         courseName={groupName(taskById.get(p.unit.taskId))}
-        short={!inTravel && (plan.slots.find((s) => p.start >= s.start && p.end <= s.end)?.short ?? false)}
+        short={!inTravel && (plan.slots.find((s) => p.start >= s.start && p.end <= s.end)?.betweenClasses ?? false)}
         running={activeTimer?.taskId === p.unit.taskId && activeTimer.subtaskId === p.unit.subtaskId}
         dragging={drag?.payload.kind === 'unit' && drag.payload.key === key}
         dropMin={inTravel ? undefined : p.start}

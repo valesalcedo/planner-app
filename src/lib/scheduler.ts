@@ -87,6 +87,8 @@ export interface FreeSlot {
   start: number;
   end: number;
   short: boolean;
+  /** Hueco entre dos clases (o lo que va en la U entre ellas), no solo un hueco corto. */
+  betweenClasses?: boolean;
 }
 
 export interface DayPlan {
@@ -113,6 +115,8 @@ const MIN_PLACE = 10;
 const MIN_FILL = 15;
 const SHORT_SLOT = 60;
 const BETWEEN_CLASSES_MAX = 90;
+/** Un bloque que parte a lo más esta cantidad de minutos después de otro se considera seguido (sigues en la U). */
+const ATTACHED_GAP = 15;
 
 export function busyBlocksFor(
   date: ISODate,
@@ -153,7 +157,7 @@ function notGoingSet(date: ISODate, attendance?: Record<ISODate, Record<string, 
  * Traslados del día: solo los días con alguna clase (no marcada "no hubo").
  * Marcar "no voy" no los cambia: siguen a la misma hora, y si decides quedarte en tu casa
  * los quitas a mano. La ida termina cuando empieza la primera clase y la vuelta parte
- * cuando termina la última, salvo que la hayas movido.
+ * cuando termina la última (o lo que va pegado a ella, como el almuerzo), salvo que la hayas movido.
  */
 export function travelBlocksFor(
   date: ISODate,
@@ -168,8 +172,27 @@ export function travelBlocksFor(
   const skip = new Set(skipped[date] ?? []);
   const classes = weekly.filter((b) => b.kind === 'clase' && b.weekday === wd && !skip.has(b.id));
   if (classes.length === 0) return [];
-  const firstStart = Math.min(...classes.map((b) => hhmmToMin(b.start)));
-  const lastEnd = Math.max(...classes.map((b) => hhmmToMin(b.end)));
+  let firstStart = Math.min(...classes.map((b) => hhmmToMin(b.start)));
+  let lastEnd = Math.max(...classes.map((b) => hhmmToMin(b.end)));
+  // Lo que va pegado a las clases (almuerzo, misa, ayudantía…) también es en la U:
+  // la ida llega antes y la vuelta espera a que termine.
+  const sameDay = weekly
+    .filter((b) => b.weekday === wd && !skip.has(b.id))
+    .map((b) => ({ start: hhmmToMin(b.start), end: hhmmToMin(b.end) }))
+    .filter((b) => b.end > b.start);
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const b of sameDay) {
+      if (b.start <= lastEnd + ATTACHED_GAP && b.end > lastEnd && b.start >= firstStart) {
+        lastEnd = b.end;
+        grew = true;
+      }
+      if (b.end >= firstStart - ATTACHED_GAP && b.start < firstStart && b.end <= lastEnd) {
+        firstStart = b.start;
+        grew = true;
+      }
+    }
+  }
   const defaults: Record<TravelLeg, number> = {
     ida: Math.max(0, firstStart - settings.travelMin),
     vuelta: lastEnd,
@@ -188,6 +211,18 @@ export function travelBlocksFor(
 }
 
 export function freeSlots(busy: BusyBlock[], dayStart: number, dayEnd: number, from: number): FreeSlot[] {
+  // Horario en la U: de la primera a la última clase. Solo ahí un hueco es "entre clases".
+  const classes = busy.filter((b) => b.kind === 'clase');
+  const campus =
+    classes.length > 0
+      ? { start: Math.min(...classes.map((b) => b.start)), end: Math.max(...classes.map((b) => b.end)) }
+      : undefined;
+  const makeSlot = (start: number, end: number, busyBefore: boolean, busyAfter: boolean): FreeSlot => {
+    const len = end - start;
+    const betweenClasses =
+      !!campus && busyBefore && busyAfter && start >= campus.start && end <= campus.end && len <= BETWEEN_CLASSES_MAX;
+    return { start, end, short: len < SHORT_SLOT || betweenClasses, ...(betweenClasses ? { betweenClasses } : {}) };
+  };
   const start = Math.max(dayStart, from);
   const slots: FreeSlot[] = [];
   let cursor = start;
@@ -208,12 +243,6 @@ export function freeSlots(busy: BusyBlock[], dayStart: number, dayEnd: number, f
   }
   if (cursor < dayEnd) slots.push(makeSlot(cursor, dayEnd, prevWasBusy, false));
   return slots.filter((s) => s.end - s.start >= MIN_PLACE);
-}
-
-function makeSlot(start: number, end: number, busyBefore: boolean, busyAfter: boolean): FreeSlot {
-  const len = end - start;
-  const betweenClasses = busyBefore && busyAfter && len <= BETWEEN_CLASSES_MAX;
-  return { start, end, short: len < SHORT_SLOT || betweenClasses };
 }
 
 /** Minutos registrados por tarea y por subtarea. */

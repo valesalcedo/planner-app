@@ -126,6 +126,32 @@ describe('traslados', () => {
     expect(travelBlocksFor(DAY, classes, { [DAY]: ['c1', 'c2'] }, undefined, travelSettings)).toEqual([]);
   });
 
+  it('la vuelta espera lo que va pegado a la última clase (almuerzo, misa)', () => {
+    const week: WeeklyBlock[] = [
+      ...classes,
+      { id: 'a1', title: 'Almuerzo / Misa', kind: 'actividad', weekday: 3, start: '11:30', end: '12:50' },
+      { id: 'a2', title: 'Personal', kind: 'actividad', weekday: 3, start: '17:00', end: '18:00' },
+    ];
+    const t = travelBlocksFor(DAY, week, {}, undefined, travelSettings);
+    expect(t.find((x) => x.leg === 'vuelta')!.start).toBe(770);
+    // Si ese día no hay almuerzo, vuelve apenas termina la clase.
+    const sinAlmuerzo = travelBlocksFor(DAY, week, { [DAY]: ['a1'] }, undefined, travelSettings);
+    expect(sinAlmuerzo.find((x) => x.leg === 'vuelta')!.start).toBe(690);
+  });
+
+  it('solo marca "entre clases" los huecos en la U, no los de después de la vuelta', () => {
+    const week: WeeklyBlock[] = [
+      ...classes,
+      { id: 'a2', title: 'Personal', kind: 'actividad', weekday: 3, start: '13:00', end: '14:00' },
+    ];
+    const busy = busyBlocksFor(DAY, week, [], {});
+    const travel = travelBlocksFor(DAY, week, {}, undefined, travelSettings);
+    const asBusy = travel.map((x) => ({ id: x.leg, start: x.start, end: x.end, title: '', kind: 'actividad' as const, sourceId: x.leg }));
+    const slots = freeSlots([...busy, ...asBusy], 480, 1200, 0);
+    expect(slots.find((s) => s.start === 590)!.betweenClasses).toBe(true);
+    expect(slots.find((s) => s.start === 750)!.betweenClasses).toBeUndefined();
+  });
+
   it('respeta la hora a la que lo moviste', () => {
     const t = travelBlocksFor(DAY, classes, {}, { vuelta: { start: '18:00' } }, travelSettings);
     const vuelta = t.find((x) => x.leg === 'vuelta')!;
