@@ -5,7 +5,7 @@ import { toISODate } from '../../lib/time';
 import { COURSE_COLORS } from '../../store/defaults';
 import { snapshot, useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
-import { focusPhrase } from '../../lib/voice';
+import { byVoice, focusPhrase } from '../../lib/voice';
 import type { AppData, Voice } from '../../types';
 import styles from './Settings.module.css';
 import { ThemePicker } from './ThemePicker';
@@ -294,7 +294,7 @@ export function SettingsScreen() {
           type="button"
           className="btn btn--danger"
           onClick={() => {
-            if (confirm('¿Borrar todos los datos? No se puede deshacer.') && confirm('¿Segura? Descarga un respaldo antes si lo necesitas.')) {
+            if (confirm('¿Borrar todos los datos? No se puede deshacer.') && confirm(`${byVoice(settings.voice, { f: '¿Segura?', m: '¿Seguro?', n: '¿Confirmas?' })} Descarga un respaldo antes si lo necesitas.`)) {
               resetData();
               openPage(null);
             }

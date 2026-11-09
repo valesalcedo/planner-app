@@ -67,6 +67,10 @@ export interface TrashedTask {
   deletedAt: number;
   /** Bono por terminarla que se quitó al borrarla. Vuelve tal cual si la recuperas. */
   bonus?: StarTx[];
+  /** Tiempo registrado de la tarea: sale de las estadísticas mientras está borrada. */
+  entries?: TimeEntry[];
+  /** Estrellas de ese tiempo: salen del saldo mientras está borrada. */
+  focusStars?: StarTx[];
 }
 
 export interface TimeEntry {

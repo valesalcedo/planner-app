@@ -6,7 +6,7 @@ import { useLookups } from '../../hooks/useDerived';
 import { ringTone } from '../../lib/color';
 import { courseDetail, daysUntil, weekProgress } from '../../lib/progress';
 import { weekStats } from '../../lib/stats';
-import { formatDuration, formatHours, formatShortDate } from '../../lib/time';
+import { formatDuration, formatShortDate } from '../../lib/time';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
 import type { ISODate } from '../../types';
@@ -101,7 +101,7 @@ export function CourseDetailView({ courseId, week, label, onBack }: Props) {
                   <span className={styles.swatch} style={{ background: SEGMENTS[i % SEGMENTS.length] }} aria-hidden="true" />
                   <span className={styles.legendName}>{activityName(act)}</span>
                   <span className={styles.legendValue}>
-                    {formatHours(min)} h · {Math.round((min / loadTotal) * 100)}%
+                    {formatDuration(min)} · {Math.round((min / loadTotal) * 100)}%
                   </span>
                 </li>
               ))}

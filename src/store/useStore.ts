@@ -11,6 +11,7 @@ import type {
   Reward,
   Settings,
   StarKind,
+  StarTx,
   Task,
   TaskPin,
   TravelLeg,
@@ -23,6 +24,7 @@ import { uid } from '../lib/id';
 import type { Unlock } from '../lib/achievements';
 import { balanceOf, bonusFor, classRef, computeStreak, multiplierFor, starsForFocus } from '../lib/rewards';
 import { hhmmToMin, toISODate, today, tsAt } from '../lib/time';
+import { lastWorkedAt } from '../lib/doneBlocks';
 import { isExpired, lostTasks } from '../lib/trash';
 import { initialData } from './defaults';
 
@@ -71,9 +73,9 @@ function pickData(s: AppData): AppData {
 interface Actions {
   addTask: (t: Omit<Task, 'id' | 'createdAt' | 'done'>) => void;
   updateTask: (id: string, patch: Partial<Task>) => void;
-  /** Manda la tarea a la papelera (30 días). Su tiempo y estrellas de foco se mantienen. */
+  /** Manda la tarea a la papelera (30 días) y quita de todas partes su tiempo y sus estrellas. */
   deleteTask: (id: string) => void;
-  /** Saca una tarea de la papelera y la deja como estaba, con su bono si estaba terminada. */
+  /** Saca una tarea de la papelera y la deja como estaba, con su tiempo y sus estrellas. */
   restoreTask: (id: string) => void;
   /** Borra para siempre una tarea de la papelera. */
   purgeTask: (id: string) => void;
@@ -168,17 +170,54 @@ function cleanTravel(travel: AppData['travel'] | undefined): AppData['travel'] |
   );
 }
 
+/**
+ * Las tareas borradas antes de que la papelera guardara su tiempo dejaron sus registros y
+ * estrellas de foco en las estadísticas y el saldo: se pasan a la papelera junto a la tarea.
+ * Además, lo que lleva más de 30 días en la papelera se borra (con su tiempo y estrellas).
+ */
+export function moveTrashedWork(
+  trash: TrashedTask[],
+  entries: TimeEntry[],
+  stars: StarTx[],
+): Pick<AppData, 'trash' | 'entries' | 'stars'> {
+  const trashedIds = new Set(trash.map((x) => x.task.id));
+  const moving = entries.filter((e) => trashedIds.has(e.taskId));
+  const movingIds = new Set(moving.map((e) => e.id));
+  const movingStars = stars.filter((t) => t.kind === 'foco' && t.ref && movingIds.has(t.ref));
+  const kept = trash
+    .map((x) => {
+      const mine = moving.filter((e) => e.taskId === x.task.id);
+      const mineIds = new Set(mine.map((e) => e.id));
+      const myStars = movingStars.filter((t) => mineIds.has(t.ref!));
+      if (mine.length === 0) return x;
+      return {
+        ...x,
+        entries: [...(x.entries ?? []), ...mine],
+        focusStars: myStars.length || x.focusStars ? [...(x.focusStars ?? []), ...myStars] : undefined,
+      };
+    })
+    .filter((x) => !isExpired(x));
+  if (moving.length === 0 && kept.length === trash.length) return { trash, entries, stars };
+  return {
+    trash: kept,
+    entries: entries.filter((e) => !movingIds.has(e.id)),
+    stars: stars.filter((t) => !movingStars.includes(t)),
+  };
+}
+
 /** Completa con valores por defecto lo que falte (respaldos o datos de versiones anteriores). */
 function withDefaults(data: Partial<AppData>): AppData {
   const base = initialData();
   const defined = <T extends object>(o: T | undefined): Partial<T> =>
     Object.fromEntries(Object.entries(o ?? {}).filter(([, v]) => v !== undefined)) as Partial<T>;
+  const merged = { ...base, ...defined(data) };
+  const { trash, entries, stars } = moveTrashedWork(merged.trash, merged.entries, merged.stars);
   return {
-    ...base,
-    ...defined(data),
+    ...merged,
+    trash,
+    entries,
+    stars,
     travel: cleanTravel(data.travel) ?? base.travel,
-    // Lo que lleva más de 30 días en la papelera se borra al abrir la app.
-    trash: (data.trash ?? base.trash).filter((x) => !isExpired(x)),
     settings: {
       ...base.settings,
       ...defined(data.settings),
@@ -201,6 +240,19 @@ export const useStore = create<Store>()(
       /** Borra los movimientos de un tipo ligados a una tarea o clase, como si nunca se hubieran dado. */
       const revoke = (kind: StarKind, ref: string) =>
         set((s) => ({ stars: s.stars.filter((t) => !(t.kind === kind && t.ref === ref)) }));
+
+      /**
+       * Una tarea terminada queda en el último día en que le registraste horas (aunque la
+       * marques otro día). Sin horas registradas, queda el día en que la marcaste.
+       */
+      const syncDoneAt = (taskId: string) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) => {
+            if (t.id !== taskId || !t.done) return t;
+            const last = lastWorkedAt(taskId, s.entries);
+            return last !== undefined && last !== t.doneAt ? { ...t, doneAt: last } : t;
+          }),
+        }));
 
       return {
         ...initialData(),
@@ -228,14 +280,24 @@ export const useStore = create<Store>()(
           const task = get().tasks.find((t) => t.id === id);
           if (!task) return;
           if (get().activeTimer?.taskId === id) get().stopTimer();
-          // El bono por terminarla se guarda junto a la tarea en la papelera: no cuenta en tu saldo
-          // mientras esté borrada, y vuelve tal cual si la recuperas. El tiempo cronometrado y sus
-          // estrellas se mantienen, porque ese trabajo sí lo hiciste.
+          // Una tarea borrada desaparece de todas partes: su bono, su tiempo registrado y las
+          // estrellas de ese tiempo salen del saldo y de las estadísticas. Todo se guarda junto
+          // a la tarea en la papelera y vuelve tal cual si la recuperas.
+          const entries = get().entries.filter((e) => e.taskId === id);
+          const entryIds = new Set(entries.map((e) => e.id));
           const bonus = get().stars.filter((t) => t.kind === 'tarea' && t.ref === id);
-          const item: TrashedTask = { task, deletedAt: Date.now(), bonus: bonus.length ? bonus : undefined };
-          revoke('tarea', id);
+          const focus = get().stars.filter((t) => t.kind === 'foco' && t.ref && entryIds.has(t.ref));
+          const item: TrashedTask = {
+            task,
+            deletedAt: Date.now(),
+            bonus: bonus.length ? bonus : undefined,
+            entries: entries.length ? entries : undefined,
+            focusStars: focus.length ? focus : undefined,
+          };
           set((s) => ({
             tasks: s.tasks.filter((t) => t.id !== id),
+            entries: s.entries.filter((e) => e.taskId !== id),
+            stars: s.stars.filter((t) => !(t.kind === 'tarea' && t.ref === id) && !(t.kind === 'foco' && t.ref && entryIds.has(t.ref))),
             trash: [item, ...s.trash.filter((x) => x.task.id !== id)],
           }));
         },
@@ -243,10 +305,17 @@ export const useStore = create<Store>()(
         restoreTask: (id) => {
           const item = get().trash.find((x) => x.task.id === id);
           if (!item) return;
+          const back = new Set((item.entries ?? []).map((e) => e.id));
+          const backStars = new Set((item.focusStars ?? []).map((t) => t.id));
           set((s) => ({
             tasks: [...s.tasks.filter((t) => t.id !== id), item.task],
             trash: s.trash.filter((x) => x.task.id !== id),
-            stars: [...s.stars.filter((t) => !(t.kind === 'tarea' && t.ref === id)), ...(item.task.done ? item.bonus ?? [] : [])],
+            entries: [...s.entries.filter((e) => !back.has(e.id)), ...(item.entries ?? [])],
+            stars: [
+              ...s.stars.filter((t) => !(t.kind === 'tarea' && t.ref === id) && !backStars.has(t.id)),
+              ...(item.task.done ? item.bonus ?? [] : []),
+              ...(item.focusStars ?? []),
+            ],
           }));
         },
 
@@ -287,7 +356,7 @@ export const useStore = create<Store>()(
                 ? {
                     ...t,
                     done,
-                    doneAt: done ? Date.now() : undefined,
+                    doneAt: done ? lastWorkedAt(id, s.entries) ?? Date.now() : undefined,
                     subtasks: done ? t.subtasks.map((st) => ({ ...st, done: true })) : t.subtasks,
                   }
                 : t,
@@ -351,13 +420,16 @@ export const useStore = create<Store>()(
           set((s) => ({ entries: [...s.entries, entry] }));
           const earned = starsForFocus(to - from, get().settings, currentMultiplier());
           award(earned, `Tiempo agregado a "${task.title}"`, 'foco', entry.id);
+          syncDoneAt(taskId);
           return earned;
         },
 
         deleteEntry: (id) => {
           // Los registros nuevos guardan sus estrellas con el id del registro; los antiguos no se pueden separar.
+          const entry = get().entries.find((e) => e.id === id);
           revoke('foco', id);
           set((s) => ({ entries: s.entries.filter((e) => e.id !== id) }));
+          if (entry) syncDoneAt(entry.taskId);
         },
 
         saveBlock: (b) => set((s) => ({ weekly: upsert(s.weekly, b) })),

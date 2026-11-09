@@ -62,10 +62,17 @@ export function doneBlocksFor(date: ISODate, tasks: Task[], entries: TimeEntry[]
   return merged;
 }
 
+/** Fin del último registro de tiempo de una tarea, o undefined si no tiene ninguno. */
+export function lastWorkedAt(taskId: string, entries: TimeEntry[]): number | undefined {
+  let last: number | undefined;
+  for (const e of entries) if (e.taskId === taskId && (last === undefined || e.end > last)) last = e.end;
+  return last;
+}
+
 /**
- * Día en que una tarea terminada aparece en "Mi día": el día en que la marcaste como hecha
- * (no el día para el que estaba planificada). Así una tarea atrasada que terminas hoy
- * aparece hoy, aunque su tiempo lo hayas registrado otro día.
+ * Día en que una tarea terminada aparece en "Mi día": el último día en que le registraste
+ * horas (se guarda en `doneAt` al terminarla), aunque hayas tocado "terminar" otro día.
+ * Sin horas registradas, es el día en que la marcaste como hecha.
  */
 export function doneDayOf(task: Task): ISODate {
   return task.doneAt !== undefined ? toISODate(new Date(task.doneAt)) : task.date;

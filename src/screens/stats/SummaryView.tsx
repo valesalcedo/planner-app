@@ -1,8 +1,8 @@
 import { Fragment, useMemo, useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { useLookups } from '../../hooks/useDerived';
-import { NO_CATEGORY, NO_COURSE, loadAsText, loadKey, weekStats, type LoadItem } from '../../lib/stats';
-import { addDays, formatDuration, formatHours, formatShortDate, startOfWeek, today, weekdayOf } from '../../lib/time';
+import { NO_CATEGORY, NO_COURSE, loadKey, weekStats, type LoadItem } from '../../lib/stats';
+import { addDays, formatDuration, formatShortDate, startOfWeek, today, weekdayOf } from '../../lib/time';
 import type { ISODate } from '../../types';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../../store/useStore';
@@ -30,8 +30,6 @@ export function SummaryView({ week, setWeek }: Props) {
       trash: s.trash,
     })),
   );
-  const showToast = useUI((s) => s.showToast);
-  const logSurveyCopy = useStore((s) => s.logSurveyCopy);
   const { course, category, activityName } = useLookups();
   const openTaskForm = useUI((s) => s.openTaskForm);
   // Filas abiertas de la carga académica, por semana, para que cambiar de semana las cierre.
@@ -46,17 +44,6 @@ export function SummaryView({ week, setWeek }: Props) {
   const loadRows = [...stats.load.entries()]
     .map(([id, row]) => ({ id, row: [...row.entries()], total: [...row.values()].reduce((a, b) => a + b, 0) }))
     .sort((a, b) => (a.id === NO_COURSE ? 1 : b.id === NO_COURSE ? -1 : b.total - a.total));
-
-  const copy = async () => {
-    const text = loadAsText(stats.load, courseName, activityName, label);
-    try {
-      await navigator.clipboard.writeText(text);
-      logSurveyCopy(thisWeek);
-      showToast('Copiado. Pégalo donde lo necesites');
-    } catch {
-      showToast('No se pudo copiar');
-    }
-  };
 
   const personalRows = [...stats.personal.entries()].sort((a, b) =>
     a[0] === NO_CATEGORY ? 1 : b[0] === NO_CATEGORY ? -1 : b[1] - a[1],
@@ -82,8 +69,8 @@ export function SummaryView({ week, setWeek }: Props) {
       </div>
 
       <div className={styles.tiles}>
-        <Tile value={`${formatHours(stats.focusTotal)} h`} label="de foco" />
-        <Tile value={`${formatHours(stats.classTotal)} h`} label="de clases" />
+        <Tile value={`${formatDuration(stats.focusTotal)}`} label="de foco" />
+        <Tile value={`${formatDuration(stats.classTotal)}`} label="de clases" />
         <Tile value={String(stats.tasksDone)} label={stats.tasksDone === 1 ? 'tarea hecha' : 'tareas hechas'} />
         <Tile value={String(stats.starsEarned)} label="estrellas ganadas" star />
       </div>
@@ -132,14 +119,9 @@ export function SummaryView({ week, setWeek }: Props) {
       </section>
 
       <section className="card card--lg stack" aria-labelledby="load-title">
-        <div className="row row--between">
-          <h2 id="load-title" className="section-title">
-            Carga académica
-          </h2>
-          <button type="button" className="btn btn--sm btn--accent" onClick={copy} disabled={loadRows.length === 0}>
-            <Icon name="copy" size={16} /> Copiar
-          </button>
-        </div>
+        <h2 id="load-title" className="section-title">
+          Carga académica
+        </h2>
         <p className="small muted" style={{ margin: 0 }}>
           Horas por ramo y tipo de actividad, sumando clases del horario (menos las que faltaste), evaluaciones y tiempo trabajado en tareas de la U. Toca un tipo para ver qué lo suma.
         </p>
@@ -151,7 +133,7 @@ export function SummaryView({ week, setWeek }: Props) {
             <thead>
               <tr>
                 <th scope="col">Actividad</th>
-                <th scope="col">Horas</th>
+                <th scope="col">Tiempo</th>
               </tr>
             </thead>
             {loadRows.map(({ id, row, total }) => (
@@ -161,7 +143,7 @@ export function SummaryView({ week, setWeek }: Props) {
                     <span className={styles.swatch} style={{ background: course(id)?.color ?? 'var(--switch-off)' }} aria-hidden="true" />
                     {courseName(id)}
                   </th>
-                  <td>{formatHours(total)}</td>
+                  <td>{formatDuration(total)}</td>
                 </tr>
                 {row.map(([act, min]) => {
                   const key = loadKey(id, act);
@@ -183,7 +165,7 @@ export function SummaryView({ week, setWeek }: Props) {
                             {activityName(act)}
                           </button>
                         </th>
-                        <td className={isOpen ? styles.openValue : undefined}>{formatHours(min)}</td>
+                        <td className={isOpen ? styles.openValue : undefined}>{formatDuration(min)}</td>
                       </tr>
                       {isOpen && (
                         <tr>
@@ -230,7 +212,7 @@ export function SummaryView({ week, setWeek }: Props) {
             <h2 id="personal-title" className="section-title">
               Tareas personales
             </h2>
-            <span style={{ fontWeight: 800 }}>{formatHours(stats.personalTotal)} h</span>
+            <span style={{ fontWeight: 800 }}>{formatDuration(stats.personalTotal)}</span>
           </div>
           <p className="small muted" style={{ margin: 0 }}>
             Organización y otras cosas que no son de la U. No se suman a la carga académica.
@@ -241,7 +223,7 @@ export function SummaryView({ week, setWeek }: Props) {
                 <span className={styles.swatch} style={{ background: category(id)?.color ?? 'var(--switch-off)' }} aria-hidden="true" />
                 {id === NO_CATEGORY ? 'Sin categoría' : category(id)?.name ?? 'Categoría borrada'}
               </span>
-              <span style={{ fontWeight: 700, flexShrink: 0 }}>{formatHours(min)} h</span>
+              <span style={{ fontWeight: 700, flexShrink: 0 }}>{formatDuration(min)}</span>
             </div>
           ))}
         </section>

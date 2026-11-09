@@ -31,13 +31,15 @@ export interface AchievementDef {
   unit?: string;
   /** Nombre en masculino, para quien eligió que la app le hable así. */
   titleM?: string;
+  /** Nombre genérico (sin género), para quien eligió "Genérico". */
+  titleN?: string;
 }
 
 export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'presente', group: 'clases', title: 'Presente', desc: 'Marca tu primera asistencia', tiers: [{ goal: 1, stars: 10 }] },
   { id: 'semana-perfecta', group: 'clases', title: 'Semana perfecta', desc: 'Ve a todas las clases de un ramo en una semana', tiers: [{ goal: 1, stars: 50 }] },
   { id: 'racha-asistencia', group: 'clases', title: 'Racha de asistencia', desc: 'Clases seguidas sin faltar', unit: 'clases', tiers: [{ goal: 10, stars: 50 }, { goal: 25, stars: 120 }, { goal: 50, stars: 300 }] },
-  { id: 'madrugadora', group: 'clases', title: 'Madrugadora', titleM: 'Madrugador', desc: 'Ve a 10 clases que empiezan a las 8:30 o antes', unit: 'clases', tiers: [{ goal: 10, stars: 80 }] },
+  { id: 'madrugadora', group: 'clases', title: 'Madrugadora', titleM: 'Madrugador', titleN: 'A primera hora', desc: 'Ve a 10 clases que empiezan a las 8:30 o antes', unit: 'clases', tiers: [{ goal: 10, stars: 80 }] },
 
   { id: 'primer-sprint', group: 'foco', title: 'Primer sprint', desc: 'Tu primera sesión con el cronómetro', tiers: [{ goal: 1, stars: 10 }] },
   { id: 'zona-foco', group: 'foco', title: 'Zona de foco', desc: '90 minutos seguidos con el cronómetro', unit: 'min', tiers: [{ goal: 90, stars: 40 }] },
@@ -54,18 +56,20 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'finde-activo', group: 'rachas', title: 'Fin de semana activo', desc: 'Avanza algo el sábado y el domingo', tiers: [{ goal: 1, stars: 30 }] },
 
   { id: 'ramo-100', group: 'ramos', title: 'Ramo al 100%', desc: 'Todas las tareas de un ramo en una semana (al menos 2)', tiers: [{ goal: 1, stars: 60 }] },
-  { id: 'preparada', group: 'ramos', title: 'Preparada', titleM: 'Preparado', desc: 'Termina tus tareas de estudio antes de una evaluación', tiers: [{ goal: 1, stars: 80 }] },
+  { id: 'preparada', group: 'ramos', title: 'Preparada', titleM: 'Preparado', titleN: 'Con preparación', desc: 'Termina tus tareas de estudio antes de una evaluación', tiers: [{ goal: 1, stars: 80 }] },
   { id: 'equilibrio', group: 'ramos', title: 'Equilibrio', desc: 'Avanza en todos tus ramos la misma semana', tiers: [{ goal: 1, stars: 50 }] },
 
-  { id: 'encuestada', group: 'habitos', title: 'Encuestada', titleM: 'Encuestado', desc: 'Copia tu carga académica 4 semanas seguidas', unit: 'semanas', tiers: [{ goal: 4, stars: 60 }] },
+  { id: 'encuestada', group: 'habitos', title: 'Encuestada', titleM: 'Encuestado', titleN: 'Encuesta al día', desc: 'Copia tu carga académica 4 semanas seguidas', unit: 'semanas', tiers: [{ goal: 4, stars: 60 }] },
   { id: 'viaje', group: 'habitos', title: 'Aprovecha el viaje', desc: 'Termina 10 tareas para el transporte', unit: 'tareas', tiers: [{ goal: 10, stars: 50 }] },
   { id: 'primer-gustito', group: 'habitos', title: 'Primer gustito', desc: 'Canjea tu primer premio en la tienda', tiers: [{ goal: 1, stars: 0 }] },
-  { id: 'ahorradora', group: 'habitos', title: 'Ahorradora', titleM: 'Ahorrador', desc: 'Junta 1.000 estrellas sin gastarlas', unit: 'estrellas', tiers: [{ goal: 1000, stars: 100 }] },
+  { id: 'ahorradora', group: 'habitos', title: 'Ahorradora', titleM: 'Ahorrador', titleN: 'Ahorro', desc: 'Junta 1.000 estrellas sin gastarlas', unit: 'estrellas', tiers: [{ goal: 1000, stars: 100 }] },
 ];
 
 /** Nombre del logro según cómo quiere que le hable la app. */
-export function titleFor(def: Pick<AchievementDef, 'title' | 'titleM'>, voice: Voice): string {
-  return voice === 'masculino' && def.titleM ? def.titleM : def.title;
+export function titleFor(def: Pick<AchievementDef, 'title' | 'titleM' | 'titleN'>, voice: Voice): string {
+  if (voice === 'masculino') return def.titleM ?? def.title;
+  if (voice === 'neutro') return def.titleN ?? def.title;
+  return def.title;
 }
 
 export const TIER_NAMES = ['Bronce', 'Plata', 'Oro', 'Diamante'];

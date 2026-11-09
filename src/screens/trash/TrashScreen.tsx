@@ -27,8 +27,8 @@ export function TrashScreen() {
   const showToast = useUI((s) => s.showToast);
 
   const lost = useMemo(() => lostTasks(tasks, trash, entries, stars), [tasks, trash, entries, stars]);
-  const minutesOf = (taskId: string) =>
-    entries.filter((e) => e.taskId === taskId).reduce((sum, e) => sum + Math.round((e.end - e.start) / 60000), 0);
+  const minutesOf = (item: (typeof trash)[number]) =>
+    (item.entries ?? []).reduce((sum, e) => sum + Math.round((e.end - e.start) / 60000), 0);
 
   return (
     <div className="screen screen--no-nav">
@@ -46,11 +46,11 @@ export function TrashScreen() {
           Borradas
         </h2>
         <p className="small muted" style={{ margin: 0 }}>
-          Quedan aquí 30 días. Al recuperarlas vuelven con sus subtareas, su avance y su bono si estaban terminadas. El tiempo y las estrellas de foco nunca se pierden.
+          Quedan aquí 30 días. Mientras están borradas, su tiempo y sus estrellas no cuentan en ninguna parte. Al recuperarlas vuelven con sus subtareas, su tiempo, sus estrellas y su bono si estaban terminadas.
         </p>
         {trash.length === 0 && <p className="small muted" style={{ margin: 0 }}>No hay nada en la papelera.</p>}
         {trash.map((item) => {
-          const min = minutesOf(item.task.id);
+          const min = minutesOf(item);
           return (
             <div key={item.task.id} className="row row--between" style={{ gap: 8 }}>
               <span className="stack" style={{ gap: 0, minWidth: 0, flex: 1 }}>
@@ -73,7 +73,7 @@ export function TrashScreen() {
                 type="button"
                 className="icon-btn icon-btn--plain"
                 aria-label={`Borrar para siempre: ${item.task.title}`}
-                onClick={() => confirm(`¿Borrar "${item.task.title}" para siempre? Su tiempo y estrellas de foco se mantienen.`) && purgeTask(item.task.id)}
+                onClick={() => confirm(`¿Borrar "${item.task.title}" para siempre? Su tiempo y sus estrellas se pierden.`) && purgeTask(item.task.id)}
               >
                 <Icon name="trash" size={18} />
               </button>

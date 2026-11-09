@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { WEEKDAYS, WEEKDAYS_SHORT, formatHours, formatShortDate } from '../../lib/time';
+import { WEEKDAYS, WEEKDAYS_SHORT, formatDuration, formatShortDate } from '../../lib/time';
 import type { ISODate } from '../../types';
 import styles from './Stats.module.css';
 
@@ -31,7 +31,7 @@ export function FocusChart({ days, values }: Props) {
             <line x1={0} x2={W} y1={y(h * 60)} y2={y(h * 60)} stroke="var(--line)" strokeWidth={1} />
             {h > 0 && (
               <text x={W} y={y(h * 60) - 4} textAnchor="end" className={styles.axis}>
-                {formatHours(h * 60)} h
+                {formatDuration(h * 60)}
               </text>
             )}
           </g>
@@ -60,7 +60,7 @@ export function FocusChart({ days, values }: Props) {
                 fill="transparent"
                 tabIndex={0}
                 role="button"
-                aria-label={`${WEEKDAYS[i]}: ${formatHours(v)} horas`}
+                aria-label={`${WEEKDAYS[i]}: ${formatDuration(v)}`}
                 onClick={() => setActive(active === i ? null : i)}
                 onFocus={() => setActive(i)}
                 onMouseEnter={() => setActive(i)}
@@ -72,7 +72,7 @@ export function FocusChart({ days, values }: Props) {
       </svg>
       <p className={styles.readout} aria-live="polite">
         {active !== null
-          ? `${WEEKDAYS[active]} ${formatShortDate(days[active])}: ${formatHours(values[active])} h`
+          ? `${WEEKDAYS[active]} ${formatShortDate(days[active])}: ${formatDuration(values[active])}`
           : 'Toca un día para ver sus horas'}
       </p>
     </div>

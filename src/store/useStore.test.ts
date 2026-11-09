@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { balanceOf, classRef, earnedBetween } from '../lib/rewards';
+import { doneDayOf } from '../lib/doneBlocks';
 import { addDays, today } from '../lib/time';
-import { useStore } from './useStore';
+import { moveTrashedWork, useStore } from './useStore';
 
 const st = () => useStore.getState();
 
@@ -180,16 +181,33 @@ describe('papelera', () => {
     expect(balanceOf(st().stars)).toBe(10);
   });
 
-  it('el tiempo registrado y sus estrellas se mantienen al borrar', () => {
+  it('al borrar, su tiempo y sus estrellas salen de todas partes y vuelven al recuperarla', () => {
     const id = addTestTask();
     expect(st().addManualEntry({ taskId: id, date: '2026-01-05', start: '10:00', end: '10:30' })).toBeGreaterThan(0);
+    st().setTaskDone(id, true);
     const before = balanceOf(st().stars);
     st().deleteTask(id);
+    expect(st().entries).toHaveLength(0);
+    expect(balanceOf(st().stars)).toBe(0);
+    st().restoreTask(id);
     expect(st().entries).toHaveLength(1);
     expect(balanceOf(st().stars)).toBe(before);
+    st().deleteTask(id);
     st().purgeTask(id);
     expect(st().trash).toHaveLength(0);
-    expect(st().entries).toHaveLength(1);
+    expect(st().entries).toHaveLength(0);
+    expect(balanceOf(st().stars)).toBe(0);
+  });
+
+  it('las tareas que ya estaban en la papelera también sacan su tiempo y estrellas', () => {
+    const id = addTestTask();
+    st().addManualEntry({ taskId: id, date: '2026-01-05', start: '10:00', end: '10:30' });
+    const task = st().tasks[0];
+    // Como quedaban antes: la tarea en la papelera, pero su tiempo afuera.
+    const moved = moveTrashedWork([{ task, deletedAt: Date.now() }], st().entries, st().stars);
+    expect(moved.entries).toHaveLength(0);
+    expect(balanceOf(moved.stars)).toBe(0);
+    expect(moved.trash[0].entries).toHaveLength(1);
   });
 
   it('recupera una tarea borrada antes de la papelera a partir de su tiempo', () => {
@@ -225,5 +243,33 @@ describe('cambiar el ramo de una tarea', () => {
     const before = st().entries;
     st().updateTask(id, { title: 'Otro nombre' });
     expect(st().entries).toBe(before);
+  });
+});
+
+describe('día en que queda una tarea terminada', () => {
+  beforeEach(() => st().resetData());
+
+  it('queda en el último día con horas registradas, aunque se termine otro día', () => {
+    const id = addTestTask();
+    st().addManualEntry({ taskId: id, date: '2026-01-05', start: '10:00', end: '10:30' });
+    st().addManualEntry({ taskId: id, date: '2026-01-07', start: '18:00', end: '19:00' });
+    st().setTaskDone(id, true);
+    expect(doneDayOf(st().tasks[0])).toBe('2026-01-07');
+  });
+
+  it('sin horas registradas, queda el día en que se marcó', () => {
+    const id = addTestTask();
+    st().setTaskDone(id, true);
+    expect(doneDayOf(st().tasks[0])).toBe(today());
+  });
+
+  it('se mueve si después agregas o borras horas', () => {
+    const id = addTestTask();
+    st().addManualEntry({ taskId: id, date: '2026-01-05', start: '10:00', end: '10:30' });
+    st().setTaskDone(id, true);
+    st().addManualEntry({ taskId: id, date: '2026-01-08', start: '10:00', end: '10:30' });
+    expect(doneDayOf(st().tasks[0])).toBe('2026-01-08');
+    st().deleteEntry(st().entries.at(-1)!.id);
+    expect(doneDayOf(st().tasks[0])).toBe('2026-01-05');
   });
 });
